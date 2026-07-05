@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
             '/login',
         ]);
 
+
+        // Global Middleware
+        // $middleware->prepend(\App\Http\Middleware\MaintenanceMode::class);
+
+
         // Daftarkan middleware global kamu di append
         // Daftarkan named middleware
         $middleware->alias([

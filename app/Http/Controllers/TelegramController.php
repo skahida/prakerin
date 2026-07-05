@@ -102,7 +102,7 @@ class TelegramController extends Controller
     {
         // Ambil data dari request Telegram
         $data = $request->all();
-        $web = "https://prakerin.skahida.sch.id/";
+        $web = "https://prakerin.skahida.my.id/";
 
         // Log data yang diterima untuk debugging
         Log::info('Received data from Telegram: ', $data);

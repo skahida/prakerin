@@ -99,7 +99,7 @@ class PresenceController extends Controller
                 'student.internshipPlace',
                 'student.class',
                 'student.department'
-            ])->orderBy('created_at', 'desc');
+            ])->orderBy('check_in', 'desc');
 
             // Filter berdasarkan nama siswa
             if ($search) {
@@ -119,25 +119,25 @@ class PresenceController extends Controller
             if ($startMonth && $endMonth) {
                 $start = Carbon::parse($startMonth)->startOfMonth();
                 $end   = Carbon::parse($endMonth)->endOfMonth();
-                $historyPresencesQuery->whereBetween('created_at', [$start, $end]);
+                $historyPresencesQuery->whereBetween('check_in', [$start, $end]);
             } elseif ($startMonth) {
                 $start = Carbon::parse($startMonth)->startOfMonth();
-                $historyPresencesQuery->where('created_at', '>=', $start);
+                $historyPresencesQuery->where('check_in', '>=', $start);
             } elseif ($endMonth) {
                 $end = Carbon::parse($endMonth)->endOfMonth();
-                $historyPresencesQuery->where('created_at', '<=', $end);
+                $historyPresencesQuery->where('check_in', '<=', $end);
             }
 
             // Filter by date range
             if ($startDate && $endDate) {
-                $historyPresencesQuery->whereBetween('created_at', [
+                $historyPresencesQuery->whereBetween('check_in', [
                     Carbon::parse($startDate)->startOfDay(),
                     Carbon::parse($endDate)->endOfDay()
                 ]);
             } elseif ($startDate) {
-                $historyPresencesQuery->whereDate('created_at', '>=', Carbon::parse($startDate)->format('Y-m-d'));
+                $historyPresencesQuery->whereDate('check_in', '>=', Carbon::parse($startDate)->format('Y-m-d'));
             } elseif ($endDate) {
-                $historyPresencesQuery->whereDate('created_at', '<=', Carbon::parse($endDate)->format('Y-m-d'));
+                $historyPresencesQuery->whereDate('check_in', '<=', Carbon::parse($endDate)->format('Y-m-d'));
             }
 
             $perPage = 5;
@@ -325,267 +325,303 @@ class PresenceController extends Controller
     //     return $pdf->download('print_Presence.pdf');
     // }
 
+    // public function print(Request $request)
+    // {
+    //     $search      = $request->input('search', '');
+    //     $batchName   = $request->input('batch_search');
+    //     $startMonth  = $request->input('start_month');
+    //     $endMonth    = $request->input('end_month');
+    //     $startDate   = $request->input('start_date');
+    //     $endDate     = $request->input('end_date');
+
+    //     $historyPresencesQuery = Presence::with([
+    //         'student.internshipBatch',
+    //         'student.internshipPlace',
+    //         'student.class',
+    //         'student.department'
+    //     ])->orderBy('check_in', 'asc'); // ✅ Urut berdasarkan jam masuk paling pagi
+
+    //     // Filter siswa
+    //     if ($search) {
+    //         $historyPresencesQuery->whereHas('student', function ($query) use ($search) {
+    //             $query->where('name', 'like', '%' . $search . '%');
+    //         });
+    //     }
+
+    //     // Filter gelombang
+    //     if ($batchName) {
+    //         $historyPresencesQuery->whereHas('student.internshipBatch', function ($query) use ($batchName) {
+    //             $query->where('id', $batchName);
+    //         });
+    //     }
+
+    //     // Filter bulan
+    //     if ($startMonth && $endMonth) {
+    //         $start = Carbon::parse($startMonth)->startOfMonth();
+    //         $end   = Carbon::parse($endMonth)->endOfMonth();
+    //         $historyPresencesQuery->whereBetween('created_at', [$start, $end]);
+    //     } elseif ($startMonth) {
+    //         $start = Carbon::parse($startMonth)->startOfMonth();
+    //         $historyPresencesQuery->where('created_at', '>=', $start);
+    //     } elseif ($endMonth) {
+    //         $end = Carbon::parse($endMonth)->endOfMonth();
+    //         $historyPresencesQuery->where('created_at', '<=', $end);
+    //     }
+
+    //     // Filter tanggal
+    //     if ($startDate && $endDate) {
+    //         $historyPresencesQuery->whereBetween('created_at', [
+    //             Carbon::parse($startDate)->startOfDay(),
+    //             Carbon::parse($endDate)->endOfDay()
+    //         ]);
+    //     } elseif ($startDate) {
+    //         $historyPresencesQuery->whereDate('created_at', '>=', Carbon::parse($startDate)->format('Y-m-d'));
+    //     } elseif ($endDate) {
+    //         $historyPresencesQuery->whereDate('created_at', '<=', Carbon::parse($endDate)->format('Y-m-d'));
+    //     }
+
+    //     $historyPresences = $historyPresencesQuery->get();
+
+    //     return view('presence.print', compact('historyPresences'));
+    // }
+
     public function print(Request $request)
-    {
-        $search      = $request->input('search', '');
-        $batchName   = $request->input('batch_search');
-        $startMonth  = $request->input('start_month');
-        $endMonth    = $request->input('end_month');
-        $startDate   = $request->input('start_date');
-        $endDate     = $request->input('end_date');
+{
+    $search      = $request->input('search', '');
+    $batchName   = $request->input('batch_search');
+    $startMonth  = $request->input('start_month');
+    $endMonth    = $request->input('end_month');
+    $startDate   = $request->input('start_date');
+    $endDate     = $request->input('end_date');
 
-        $historyPresencesQuery = Presence::with([
-            'student.internshipBatch',
-            'student.internshipPlace',
-            'student.class',
-            'student.department'
-        ])->orderBy('check_in', 'asc'); // ✅ Urut berdasarkan jam masuk paling pagi
+    $historyPresencesQuery = Presence::with([
+        'student.internshipBatch',
+        'student.internshipPlace',
+        'student.class',
+        'student.department'
+    ])->orderBy('check_in', 'asc');
 
-        // Filter siswa
-        if ($search) {
-            $historyPresencesQuery->whereHas('student', function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%');
-            });
-        }
-
-        // Filter gelombang
-        if ($batchName) {
-            $historyPresencesQuery->whereHas('student.internshipBatch', function ($query) use ($batchName) {
-                $query->where('id', $batchName);
-            });
-        }
-
-        // Filter bulan
-        if ($startMonth && $endMonth) {
-            $start = Carbon::parse($startMonth)->startOfMonth();
-            $end   = Carbon::parse($endMonth)->endOfMonth();
-            $historyPresencesQuery->whereBetween('created_at', [$start, $end]);
-        } elseif ($startMonth) {
-            $start = Carbon::parse($startMonth)->startOfMonth();
-            $historyPresencesQuery->where('created_at', '>=', $start);
-        } elseif ($endMonth) {
-            $end = Carbon::parse($endMonth)->endOfMonth();
-            $historyPresencesQuery->where('created_at', '<=', $end);
-        }
-
-        // Filter tanggal
-        if ($startDate && $endDate) {
-            $historyPresencesQuery->whereBetween('created_at', [
-                Carbon::parse($startDate)->startOfDay(),
-                Carbon::parse($endDate)->endOfDay()
-            ]);
-        } elseif ($startDate) {
-            $historyPresencesQuery->whereDate('created_at', '>=', Carbon::parse($startDate)->format('Y-m-d'));
-        } elseif ($endDate) {
-            $historyPresencesQuery->whereDate('created_at', '<=', Carbon::parse($endDate)->format('Y-m-d'));
-        }
-
-        $historyPresences = $historyPresencesQuery->get();
-
-        return view('presence.print', compact('historyPresences'));
+    // 🔎 Filter siswa
+    if ($search) {
+        $historyPresencesQuery->whereHas('student', function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%");
+        });
     }
+
+    // 🎓 Filter gelombang
+    if ($batchName) {
+        $historyPresencesQuery->whereHas('student.internshipBatch', function ($q) use ($batchName) {
+            $q->where('id', $batchName);
+        });
+    }
+
+    // 📆 Filter bulan
+    if ($startMonth && $endMonth) {
+        $historyPresencesQuery->whereBetween('created_at', [
+            \Carbon\Carbon::parse($startMonth)->startOfMonth(),
+            \Carbon\Carbon::parse($endMonth)->endOfMonth()
+        ]);
+    } elseif ($startMonth) {
+        $historyPresencesQuery->where(
+            'created_at',
+            '>=',
+            \Carbon\Carbon::parse($startMonth)->startOfMonth()
+        );
+    } elseif ($endMonth) {
+        $historyPresencesQuery->where(
+            'created_at',
+            '<=',
+            \Carbon\Carbon::parse($endMonth)->endOfMonth()
+        );
+    }
+
+    // 🗓 Filter tanggal
+    if ($startDate && $endDate) {
+        $historyPresencesQuery->whereBetween('created_at', [
+            \Carbon\Carbon::parse($startDate)->startOfDay(),
+            \Carbon\Carbon::parse($endDate)->endOfDay()
+        ]);
+    } elseif ($startDate) {
+        $historyPresencesQuery->whereDate('created_at', '>=', $startDate);
+    } elseif ($endDate) {
+        $historyPresencesQuery->whereDate('created_at', '<=', $endDate);
+    }
+
+    $historyPresences = $historyPresencesQuery->get();
+
+    // 🧾 Generate PDF (wkhtmltopdf)
+    $pdf = \Barryvdh\Snappy\Facades\SnappyPdf::loadView(
+        'presence.print',
+        compact('historyPresences')
+    )
+    ->setPaper('a4')
+    ->setOrientation('portrait')
+    ->setOption('margin-top', '10mm')
+    ->setOption('margin-bottom', '10mm')
+    ->setOption('margin-left', '10mm')
+    ->setOption('margin-right', '10mm')
+    ->setOption('enable-local-file-access', true);
+
+    return $pdf->inline('laporan-presensi-magang.pdf');
+}
+
+
 
 
 
     public function printPresences(Request $request)
-    {
-        $batchName = $request->input('batch_search');
-        $search = $request->input('search');
-        $startMonth = $request->input('start_month'); // Format: 'YYYY-MM'
-        $endMonth = $request->input('end_month'); // Format: 'YYYY-MM' (optional)
+{
+    $batchId     = $request->input('batch_search');
+    $search      = $request->input('search');
+    $classCode   = $request->input('class_code');
 
-        // Mengatur Carbon untuk bahasa Indonesia
-        Carbon::setLocale('id');
+    $startMonth  = $request->input('start_month');       // Format: 'YYYY-MM'
+    $endMonth    = $request->input('end_month');         // Format: 'YYYY-MM' (optional)
+    $startDate   = $request->input('start_date');       // Format: 'YYYY-MM-DD'
+    $endDate     = $request->input('end_date');         // Format: 'YYYY-MM-DD' (optional)
 
-        // Menentukan format untuk hasil output tahun dan bulan
+    Carbon::setLocale('id');
+
+    // Tentukan range tanggal
+    if ($startDate) {
+        $start = Carbon::parse($startDate)->startOfDay();
+        $end   = $endDate ? Carbon::parse($endDate)->endOfDay() : $start->copy()->endOfDay();
+        $yearResult = $start->translatedFormat('d F Y') . ($endDate ? ' - ' . $end->translatedFormat('d F Y') : '');
+    } elseif ($startMonth) {
+        $start = Carbon::createFromFormat('Y-m', $startMonth)->startOfMonth();
+        $end   = $endMonth ? Carbon::createFromFormat('Y-m', $endMonth)->endOfMonth() : $start->copy()->endOfMonth();
+        $yearResult = $start->translatedFormat('F') . ($endMonth ? ' - ' . $end->translatedFormat('F Y') : ' ' . $start->translatedFormat('Y'));
+    } else {
+        $start = $end = null;
         $yearResult = '';
-        if ($startMonth) {
-            $carbonStartDate = Carbon::createFromFormat('Y-m', $startMonth);
-
-            if ($endMonth) {
-                // Jika ada end_month, gunakan range bulan
-                $carbonEndDate = Carbon::createFromFormat('Y-m', $endMonth);
-
-                // Format yearResult sebagai range bulan
-                $yearResult = $carbonStartDate->translatedFormat('F') . ' - ' . $carbonEndDate->translatedFormat('F Y'); // Output: "Januari - April 2025"
-            } else {
-                // Jika hanya start_month yang ada, format tahun dan bulan
-                $yearResult = $carbonStartDate->translatedFormat('F Y'); // Output: "Januari 2025"
-            }
-        }
-
-        // Ambil presences lengkap dengan student dan relasi lainnya
-        $presencesQuery = Presence::with([
-            'student.internshipBatch',
-            'student.internshipPlace',
-            'student.class',
-            'student.department'
-        ])
-            ->join('students', 'students.id', '=', 'presences.student_id')
-            ->orderBy('students.name', 'asc');
-
-        if ($search) {
-            $presencesQuery->whereHas('student', function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%');
-            });
-        }
-
-        // FILTER BATCH
-        if ($batchName) {
-
-            // Menambahkan kondisi filter pada query historyPresences
-            $presencesQuery->whereHas('student.internshipBatch', function ($q) use ($batchName) {
-                // Memfilter berdasarkan id batch_name yang diambil dari request
-                $q->where('id', $batchName);
-            });
-
-            // Mendapatkan nama Gelombang berdasarkan batch_id
-            $batch = InternshipBatch::find($batchName);
-            if ($batch) {
-                $batchName = $batch->batch_name; // Mengambil nama batch (misalnya "Gelombang 3")
-            } else {
-                $batchName = 'Gelombang Tidak Ditemukan';
-            }
-        } else {
-            $batchName = 'Semua Gelombang';
-        }
-
-
-
-        // Filter berdasarkan bulan (start_month dan end_month)
-        if ($startMonth) {
-            $parsedStartMonth = Carbon::parse($startMonth); // Parsing start month
-
-            // Jika end_month diisi, gunakan rentang bulan
-            if ($endMonth) {
-                $parsedEndMonth = Carbon::parse($endMonth);
-                $presencesQuery->whereBetween('check_in', [
-                    $parsedStartMonth->startOfMonth(),
-                    $parsedEndMonth->endOfMonth()
-                ]);
-            } else {
-                // Jika hanya start_month yang diisi, filter berdasarkan bulan itu saja
-                $presencesQuery->whereYear('check_in', $parsedStartMonth->year)
-                    ->whereMonth('check_in', $parsedStartMonth->month);
-            }
-        }
-
-        $presences = $presencesQuery->get();
-
-        // Hitung hari efektif (jumlah hari dalam bulan itu kecuali hari Minggu)
-        list($tahun, $bulan) = explode('-', $startMonth);
-        $bulan = (int) $bulan; // <- fix penting
-        $jumlahHari = Carbon::createFromDate($tahun, $bulan)->daysInMonth;
-
-        // Menentukan format untuk hasil output tahun dan bulan
-        $hariEfektif = 0;
-
-        if ($startMonth) {
-            // Parsing bulan dan tahun dari startMonth
-            $carbonStartDate = Carbon::createFromFormat('Y-m', $startMonth);
-            $startYear = $carbonStartDate->year;
-            $startMonthNum = $carbonStartDate->month;
-
-            if ($endMonth) {
-                // Parsing bulan dan tahun dari endMonth
-                $carbonEndDate = Carbon::createFromFormat('Y-m', $endMonth);
-                $endYear = $carbonEndDate->year;
-                $endMonthNum = $carbonEndDate->month;
-
-                // Hitung hari efektif untuk setiap bulan dalam rentang startMonth hingga endMonth
-                for ($year = $startYear; $year <= $endYear; $year++) {
-                    $start = ($year == $startYear) ? $startMonthNum : 1;  // Mulai dari bulan startMonth untuk tahun pertama
-                    $end = ($year == $endYear) ? $endMonthNum : 12;      // Sampai bulan endMonth untuk tahun terakhir
-
-                    for ($month = $start; $month <= $end; $month++) {
-                        $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
-
-                        for ($day = 1; $day <= $daysInMonth; $day++) {
-                            $date = Carbon::createFromDate($year, $month, $day);
-                            // Hitung hari efektif (tidak menghitung hari Minggu)
-                            if (!$date->isSunday()) {
-                                $hariEfektif++;
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Jika hanya ada startMonth, hitung hari efektif di bulan tersebut
-                $daysInMonth = $carbonStartDate->daysInMonth;
-
-                for ($day = 1; $day <= $daysInMonth; $day++) {
-                    $date = Carbon::createFromDate($startYear, $startMonthNum, $day);
-                    if (!$date->isSunday()) {
-                        $hariEfektif++;
-                    }
-                }
-            }
-        }
-
-        // Kelompokkan per siswa
-        $grouped = $presences->groupBy('student_id');
-
-        $rekap = [];
-
-        foreach ($grouped as $studentPresences) {
-            $student = $studentPresences->first()->student;
-            // // Hitung jumlah hari efektif di bulan yang dipilih, exclude hari Minggu
-            // $hariEfektif = $studentPresences->filter(function ($presence) use ($monthSelect) {
-            //     if (!$presence->check_in) return false;
-            //     $tanggal = Carbon::parse($presence->check_in);
-            //     return !$tanggal->isSunday() && $tanggal->format('Y-m') === $monthSelect;
-            // })->count();
-
-            $masuk = $studentPresences->where('status', 'present')->count();
-            $sakit = $studentPresences->where('status', 'sick')->count();
-            $izin = $studentPresences->where('status', 'permission')->count();
-            $alpa = $studentPresences->where('status', 'absent')->count();
-            $holiday = $studentPresences->where('status', 'holiday')->count();
-
-            // Status lain-lain jika ada (misalnya 'dinas', 'cuti')
-            $lainnya = $studentPresences->whereNotIn('status', ['present', 'sick', 'permission', 'absent', 'holiday'])->count();
-
-            // Contoh keterangan tambahan: gabungkan tanggal sakit
-            $keterangan = $studentPresences
-                ->where('status', 'sick')
-                ->pluck('check_in')
-                ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-                ->implode(', ');
-
-            $rekap[] = (object)[
-                'nama' => $student->name,
-                'kelas' => $student->class->name,
-                'hari_efektif' => $hariEfektif,
-                'masuk' => $masuk,
-                'sakit' => $sakit,
-                'izin' => $izin,
-                'alpa' => $alpa,
-                'libur' => $holiday,
-                'lainnya' => $lainnya,
-                'keterangan' => $sakit > 0 ? 'Sakit tanggal ' . $keterangan : '-',
-            ];
-        }
-
-        // Urutkan rekap tabel berdasarkan jumlah masuk terbanyak
-        $rekap = collect($rekap)->sortByDesc('masuk')->values()->all();
-
-        $data = [
-            'data' => $rekap,
-            'yearResult' => $yearResult,
-            'batchName' => $batchName,
-        ];
-
-        $pdf = \Barryvdh\Snappy\Facades\SnappyPdf::loadView('presence.report', $data)
-            ->setOption('page-size', 'A4')
-            ->setOption('orientation', 'Portrait')
-            ->setOption('margin-top', 20)
-            ->setOption('margin-left', 15)
-            ->setOption('margin-right', 15)
-            ->setOption('margin-bottom', 20)
-            ->setOption('enable-local-file-access', true); // Tambahkan ini
-
-        return $pdf->download('rekap-kehadiran.pdf');
     }
+
+    // Query siswa sesuai filter batch, class, search
+    $studentsQuery = Student::with(['class', 'internshipBatch'])
+        ->whereHas('internshipBatch', fn($q) => $q->where('status_batch', 'active'));
+
+    if ($batchId) {
+        $studentsQuery->whereHas('internshipBatch', fn($q) => $q->where('id', $batchId));
+        $batch = InternshipBatch::find($batchId);
+        $batchName = $batch ? $batch->batch_name : 'Gelombang Tidak Ditemukan';
+    } else {
+        $batchName = 'Semua Gelombang';
+    }
+
+    if ($classCode) {
+        $studentsQuery->whereHas('class', fn($q) => $q->where('class_code', $classCode));
+    }
+
+    if ($search) {
+        $studentsQuery->where('name', 'like', '%' . $search . '%');
+    }
+
+    $students = $studentsQuery->orderBy('name', 'asc')->get();
+
+    // Hitung hari efektif
+    $hariEfektif = 77;
+    // if ($start && $end) {
+    //     $hariEfektif = Presence::whereBetween('check_in', [$start, $end])
+    //         ->selectRaw('DATE(check_in) as tgl')
+    //         ->groupBy('tgl')
+    //         ->pluck('tgl')
+    //         ->count();
+    // }
+
+
+    $rekap = [];
+    foreach ($students as $student) {
+    // Hitung kehadiran per status untuk batch aktif
+    $presencesQuery = Presence::where('student_id', $student->id)
+        ->whereHas('student.internshipBatch', function($q) {
+            $q->where('status_batch', 'active');
+        });
+
+    if ($start && $end) {
+        $presencesQuery->whereBetween('created_at', [$start, $end]);
+    }
+
+    $presences = $presencesQuery->get();
+
+// Group by tanggal (hanya tanggal, bukan waktu)
+$presencesByDate = $presences->groupBy(fn($p) => Carbon::parse($p->check_in)->toDateString());
+
+$masuk = $sakit = $izin = $holiday = $lainnya = 0;
+
+foreach ($presencesByDate as $date => $entries) {
+    // Ambil prioritas status jika ada multiple status di hari yang sama
+    // Misal prioritas: present > sick > permission > holiday > lainnya
+    if ($entries->contains('status', 'present')) {
+        $masuk++;
+    } elseif ($entries->contains('status', 'sick')) {
+        $sakit++;
+    } elseif ($entries->contains('status', 'permission')) {
+        $izin++;
+    } elseif ($entries->contains('status', 'holiday')) {
+        $holiday++;
+    } else {
+        $lainnya++;
+    }
+}
+
+// Hitung alpa otomatis
+$alpa = $hariEfektif - ($masuk + $sakit + $izin + $holiday + $lainnya);
+if ($alpa < 0) $alpa = 0;
+
+
+    $tgl_sakit = $presences->where('status', 'sick')
+                    ->pluck('check_in')
+                    ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
+                    ->implode(', ');
+
+    $tgl_izin = $presences->where('status', 'permission')
+                    ->pluck('check_in')
+                    ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
+                    ->implode(', ');
+
+    $keterangan = [];
+    if ($sakit > 0) $keterangan[] = 'Sakit tanggal '.$tgl_sakit;
+    if ($izin > 0)  $keterangan[] = 'Izin tanggal '.$tgl_izin;
+    if ($alpa > 0)  $keterangan[] = 'Alpa '.$alpa.' hari'; // keterangan alpa
+
+    $keteranganStr = !empty($keterangan) ? implode(' | ', $keterangan) : '-';
+
+    $rekap[] = (object)[
+        'nama'        => $student->name,
+        'kelas'       => $student->class->name ?? '-',
+        'hari_efektif'=> $hariEfektif,
+        'masuk'       => $masuk,
+        'sakit'       => $sakit,
+        'izin'        => $izin,
+        'alpa'        => $alpa,
+        'libur'       => $holiday,
+        'lainnya'     => $lainnya,
+        'keterangan'  => $keteranganStr,
+    ];
+}
+
+
+    $data = [
+        'data'      => $rekap,
+        'yearResult'=> $yearResult,
+        'batchName' => $batchName,
+        'className' => $classCode,
+    ];
+
+    $pdf = \Barryvdh\Snappy\Facades\SnappyPdf::loadView('presence.report', $data)
+        ->setOption('page-size','A4')
+        ->setOption('orientation','Portrait')
+        ->setOption('margin-top',20)
+        ->setOption('margin-left',15)
+        ->setOption('margin-right',15)
+        ->setOption('margin-bottom',20)
+        ->setOption('enable-local-file-access',true);
+
+    return $pdf->download('Rekap Kehadiran Prakerin ' . ($classCode ?? 'Semua Kelas') . '.pdf');
+}
+
+
+
 
 
     // public function checkIn(Request $request)

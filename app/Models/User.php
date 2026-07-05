@@ -69,6 +69,6 @@ class User extends Authenticatable
     // Definisikan relasi dengan model Session
     public function sessions()
     {
-        return $this->hasMany(Session::class);
+        return $this->hasMany(UserSession::class);
     }
 }

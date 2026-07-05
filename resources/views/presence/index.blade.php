@@ -108,10 +108,10 @@
                                     <td>{{ \Carbon\Carbon::parse($presence->check_in)->locale('id')->isoFormat('dddd') ?? 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
-                                        {{ $presence->created_at ? \Carbon\Carbon::parse($presence->created_at)->timezone('Asia/Jakarta')->format('d-m-Y H:i:s') : 'Belum Presensi Masuk' }}
+                                        {{ $presence->check_in ? \Carbon\Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y H:i:s') : 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
-                                        {{ $presence->created_at ? \Carbon\Carbon::parse($presence->created_at)->timezone('Asia/Jakarta')->format('d-m-Y H:i:s') : '-' }}
+                                        {{ $presence->check_in ? \Carbon\Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y H:i:s') : '-' }}
                                     </td>
 
                                     <!-- Menampilkan peta jika check_in_location_link ada -->
@@ -210,10 +210,10 @@
                                         {{ \Carbon\Carbon::parse($presence->check_in)->locale('id')->isoFormat('dddd') ?? 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
-                                        {{ $presence->created_at ? \Carbon\Carbon::parse($presence->created_at)->timezone('Asia/Jakarta')->format('d-m-Y') : 'Belum Presensi Masuk' }}
+                                        {{ $presence->check_in ? \Carbon\Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y') : 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
-                                        {{ $presence->created_at ? \Carbon\Carbon::parse($presence->created_at)->timezone('Asia/Jakarta')->format('H:i:s') : 'Belum Presensi Masuk' }}
+                                        {{ $presence->check_in ? \Carbon\Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('H:i:s') : 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
                                         {{ $presence->check_out ? \Carbon\Carbon::parse($presence->check_out)->timezone('Asia/Jakarta')->format('H:i:s') : '-' }}
@@ -245,7 +245,12 @@
                                         @endif
                                     </td>
                                     <td>
-                                        {{ $presence->status == 'present' ? 'Masuk' : ($presence->status == 'premission' ? 'Izin' : ($presence->status == 'sick' ? 'Sakit' : 'Alpa')) }}
+                                       {{ $presence->status == 'present' ? 'Masuk' 
+                                            : ($presence->status == 'premission' ? 'Izin' 
+                                            : ($presence->status == 'sick' ? 'Sakit' 
+                                            : ($presence->status == 'holiday' ? 'Libur' 
+                                            : 'Alpa'))) }}
+
                                     </td>
                                     <td>{{ $presence->note ? $presence->note : '-' }}</td>
                                 </tr>

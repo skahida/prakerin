@@ -16,10 +16,18 @@ use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\GradeController;
+use App\Http\Controllers\MapMonitoringController;
 use App\Http\Controllers\ReportController;
 use App\Http\Middleware\CheckIfAuthenticated;
 use App\Http\Controllers\TelegramController;
 use Illuminate\Support\Facades\Route;
+
+// Route::middleware([\App\Http\Middleware\MaintenanceMode::class])->group(function () {
+//     Route::get('/{any}', function () {
+//         return view('maintenance');
+//     })->where('any', '.*');
+// });
+
 
 Route::middleware(['web'])->group(function () {
     // Route Login (Menampilkan halaman login untuk yang belum login)
@@ -108,6 +116,7 @@ Route::middleware(['web'])->group(function () {
         // Route Presences
         Route::get('/presence', [PresenceController::class, 'index'])->name('presence');
         Route::get('/history-presence', [PresenceController::class, 'history'])->name('history.presence');
+        Route::get('/history-date', [PresenceController::class, 'historyDate'])->name('history.presenceDate');
         Route::get('/print-presence', [PresenceController::class, 'printPresences'])->name('print.presence');
         Route::get('/get-student-location/{student_id}', [PresenceController::class, 'getStudentLocation']);
         Route::post('/presence/store', [PresenceController::class, 'store'])->name('presence.store');
@@ -185,6 +194,10 @@ Route::middleware(['web'])->group(function () {
 
         Route::get('/attendance-data', [DashboardController::class, 'getAttendanceData'])->name('attendance.data');
 
-        Route::get('/presence/print', [PresenceController::class, 'print'])->name('print.presence');
+        Route::get('/presence/print', [PresenceController::class, 'print'])->name('print.presenceDate');
+
+        Route::get('/map-monitoring', [MapMonitoringController::class, 'index'])->name('map-monitoring.index');
+
+        Route::get('/map-monitoring/data', [MapMonitoringController::class, 'getPresencesAjax'])->name('map.monitoring.data');
     });
 });

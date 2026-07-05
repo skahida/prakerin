@@ -1,170 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Prakerin Tracer | Login</title>
-    <link rel="apple-touch-icon" sizes="76x76" href="{{ asset('../assets/img/logo/logo-removebg-preview.png') }}">
-    <link rel="icon" type="image/png" href="{{ asset('../assets/img/logo/logo-removebg-preview.png') }}">
+    <title>Login | Prakerin Tracer</title>
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs" defer></script>
 
     <style>
         body {
-            font-family: "Poppins", sans-serif;
-            background: linear-gradient(rgba(0, 0, 0, 0.6),
-                rgba(0, 0, 0, 0.6)),
-            url("{{ asset('../assets/img/banner/smk.jpeg') }}") no-repeat center center/cover;
-            min-height: 100dvh;
-            /* ✅ lebih stabil di mobile */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 15px;
-            position: relative;
+            font-family: 'Inter', sans-serif;
+            background: #090d16 url("{{ asset('../assets/img/banner/smk.jpeg') }}") no-repeat center center fixed;
+            background-size: cover;
         }
 
-        /* Biar tombol eye bulat di kanan */
-        .input-group .btn {
-            border-radius: 0 10px 10px 0 !important;
+        [x-cloak] {
+            display: none !important;
         }
 
-
-        /* Biar input password bulat di kiri */
-        .input-group .form-control {
-            border-radius: 10px 0 0 10px !important;
-        }
-
-
-
-        .login-card {
-            width: 100%;
-            max-width: 420px;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 30px 25px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            animation: fadeIn 0.8s ease-in-out;
-        }
-
-        .login-card img {
-            width: 90px;
-            margin-bottom: 15px;
-        }
-
-        .login-card h4 {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .login-card p {
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 20px;
-        }
-
-        .form-control {
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 15px;
-        }
-
-        .btn-login {
-            width: 100%;
-            border-radius: 10px;
-            padding: 12px;
-            background: #15a34b;
-            color: white;
-            font-weight: 600;
-            transition: 0.3s;
-        }
-
-        .btn-login:hover {
-            background: #0e7a38;
-        }
-
-        /* Animasi pulse */
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(21, 163, 75, 0.7);
-            }
-
-            70% {
-                transform: scale(1.1);
-                box-shadow: 0 0 0 15px rgba(21, 163, 75, 0);
-            }
-
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(21, 163, 75, 0);
+        @keyframes blinker {
+            50% {
+                opacity: 0.3;
             }
         }
 
-        .contact-btn {
-            position: fixed;
-            bottom: 70px;
-            right: 20px;
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            background: #15a34b;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            cursor: pointer;
-            z-index: 1000;
-            text-decoration: none;
-
-            /* efek animasi */
-            animation: pulse 2s infinite;
+        .animate-blink {
+            animation: blinker 1s linear infinite;
         }
 
-
-        .contact-btn:hover {
-            transform: scale(1.1);
-            background: #0e7a38;
-            color: #fff;
-        }
-
-        /* Footer */
-        .footer {
-            position: fixed;
-            bottom: 10px;
-            width: 100%;
-            text-align: center;
-            color: #fff;
-            font-size: 13px;
-            font-weight: 500;
-            animation: fadeInUp 2s ease-in-out infinite alternate;
-        }
-
-        .footer-link {
-            color: #15a34b;
-            text-decoration: none;
-        }
-
-        .footer-link:hover {
-            text-decoration: underline;
-            color: #d1d5db;
-            /* abu-abu terang pas hover */
-        }
-
-
-        @keyframes fadeIn {
+        @keyframes smoothFadeUp {
             from {
                 opacity: 0;
-                transform: translateY(-15px);
+                transform: translateY(12px);
             }
 
             to {
@@ -173,129 +45,219 @@
             }
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0.6;
-                transform: translateY(5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .animate-core {
+            animation: smoothFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
     </style>
 </head>
 
-<body>
-    <div class="login-card">
-        <img src="{{ asset('../assets/img/logo/logo-removebg-preview.png') }}" alt="Logo" />
-        <h4>Welcome to Prakerin Tracer</h4>
-        <p>Internship Attendance & Reporting</p>
+<body x-data="themeEngine()" x-init="initEngine()"
+    class="flex items-center justify-center min-h-screen p-4 relative overflow-x-hidden antialiased select-none transition-colors duration-300"
+    :class="darkMode ? 'bg-[#090d16] text-slate-200' : 'bg-slate-100 text-slate-800'">
 
-        <!-- Alert Error -->
-        @if ($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show text-start" role="alert">
-            <ul class="mb-0">
-                @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        @endif
+    <div class="absolute inset-0 z-0 transition-opacity duration-300"
+        :class="darkMode ? 'bg-slate-950/92' : 'bg-slate-900/40'"></div>
 
+    <div class="absolute top-4 right-4 z-20">
+        <button @click="toggleTheme()"
+            class="flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold shadow-sm transition-all duration-200 active:scale-95"
+            :class="darkMode ? 'bg-[#0d1527] border-[#1e293b] text-amber-400 hover:text-amber-300' :
+                'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'">
+            <span class="material-icons-round text-sm" x-text="darkMode ? 'light_mode' : 'dark_mode'"></span>
+        </button>
+    </div>
 
-        <form action="{{ route('login') }}" method="POST" id="loginForm" novalidate>
-            @csrf
-            <div class="mb-3 text-start">
-                <label class="form-label">Username</label>
-                <input type="text" name="username" class="form-control" placeholder="Masukan Username"
-                    value="{{ old('username') }}" autofocus required />
-                <div class="invalid-feedback">Username wajib diisi.</div>
-            </div>
+    <div class="relative w-full max-w-[450px] animate-core z-10 mx-auto" x-cloak>
 
-            <div class="mb-3 text-start">
-                <label class="form-label">Password</label>
-                <div class="input-group">
-                    <input type="password" name="password" id="passwordField" class="form-control"
-                        placeholder="Masukan Password" required />
-                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
-                        <i class="fa fa-eye"></i>
-                    </button>
-                    <div class="invalid-feedback">Password wajib diisi.</div>
+        <div class="rounded-[28px] overflow-hidden border transition-all duration-300"
+            :class="darkMode ? 'bg-[#0d1527] border-[#1e293b] shadow-[0_35px_70px_-15px_rgba(0,0,0,0.95)]' :
+                'bg-white border-slate-200 shadow-[0_35px_70px_-15px_rgba(15,23,42,0.12)]'">
+
+            <div class="pt-10 pb-6 px-10 text-center relative border-b transition-colors duration-300"
+                :class="darkMode ? 'border-[#1e293b] bg-[#090d16]' : 'border-slate-100 bg-slate-50'">
+
+                <div class="inline-flex p-3 rounded-2xl border transition-colors duration-300 mb-3.5"
+                    :class="darkMode ? 'border-[#1e293b] bg-[#050a12]' : 'border-slate-200 bg-white'">
+                    <img src="{{ asset('../assets/img/logo/logo-removebg-preview.png') }}" alt="Logo"
+                        class="w-11 h-11 object-contain">
+                </div>
+
+                <h1 class="text-xl font-bold tracking-tight uppercase transition-colors duration-300"
+                    :class="darkMode ? 'text-slate-100' : 'text-slate-900'">TERA PRAKERIN</h1>
+
+                <div class="text-[10px] font-bold uppercase tracking-[0.15em] mt-2 flex flex-col items-center gap-1.5"
+                    :class="darkMode ? 'text-emerald-500' : 'text-emerald-600'">
+                    <div>SISTEM PRESENSI DAN MONITORING</div>
+                    <div class="flex items-center gap-1.5 opacity-95 font-semibold tracking-[0.02em] mt-0.5 px-3 py-1 rounded-md border transition-colors duration-300"
+                        :class="darkMode ? 'bg-[#050a12] border-[#1e293b]' : 'bg-white border-slate-200 shadow-sm'">
+                        <span class="material-icons-round text-[11px] animate-pulse mr-0.5">watch_later</span>
+
+                        <span x-text="liveHour">00</span>
+                        <span class="animate-blink">:</span>
+                        <span x-text="liveMinute">00</span>
+                        <span class="animate-blink">:</span>
+                        <span x-text="liveSecond" class="opacity-75 text-[9px]">00</span>
+
+                        <span class="mx-1 opacity-40">&bull;</span>
+                        <span class="tracking-wider" :class="darkMode ? 'text-slate-400' : 'text-slate-500'">LIVE</span>
+                    </div>
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-login" id="loginBtn">
-                <i class="fas fa-sign-in-alt"></i> Login
-            </button>
-        </form>
+            <div class="p-8 transition-colors duration-300" :class="darkMode ? 'bg-[#0d1527]' : 'bg-white'">
+
+                @if ($errors->any())
+                    <div class="flex items-start gap-2.5 p-3.5 rounded-xl mb-5 text-xs font-medium border text-left shadow-sm"
+                        :class="darkMode ? 'bg-red-950/20 text-red-400 border-red-900/50' :
+                            'bg-red-50 text-red-700 border-red-200'">
+                        <span class="material-icons-round text-base shrink-0"
+                            :class="darkMode ? 'text-red-500' : 'text-red-600'">error_outline</span>
+                        <ul class="list-none space-y-0.5 leading-relaxed">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form id="loginForm" action="{{ route('login') }}" method="POST" class="space-y-5" novalidate>
+                    @csrf
+
+                    <div class="space-y-2 group">
+                        <label
+                            class="block text-[10px] font-bold uppercase tracking-wider ml-0.5 transition-colors duration-300"
+                            :class="darkMode ? 'text-slate-400 group-focus-within:text-emerald-400' :
+                                'text-slate-500 group-focus-within:text-emerald-600'">
+                            Identity Account
+                        </label>
+                        <div class="relative">
+                            <span
+                                class="material-icons-round absolute left-4 top-1/2 -translate-y-1/2 text-[19px] transition-colors duration-300"
+                                :class="darkMode ? 'text-slate-500 group-focus-within:text-emerald-400' :
+                                    'text-slate-400 group-focus-within:text-emerald-600'">
+                                alternate_email
+                            </span>
+                            <input type="text" name="username"
+                                class="w-full border py-3 pl-11 pr-4 rounded-xl text-sm shadow-sm outline-none transition-all duration-300"
+                                :class="darkMode ?
+                                    'bg-[#050a12] border-[#1e293b] focus:border-emerald-500/50 focus:bg-[#050a12] text-slate-200 placeholder-slate-600 focus:ring-0' :
+                                    'bg-slate-50 border-slate-200 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400 focus:ring-0'"
+                                placeholder="Masukkan username atau NIS" value="{{ old('username') }}" autofocus
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 group" x-data="{ show: false }">
+                        <label
+                            class="block text-[10px] font-bold uppercase tracking-wider ml-0.5 transition-colors duration-300"
+                            :class="darkMode ? 'text-slate-400 group-focus-within:text-emerald-400' :
+                                'text-slate-500 group-focus-within:text-emerald-600'">
+                            Security Password
+                        </label>
+                        <div class="relative flex items-center">
+                            <span
+                                class="material-icons-round absolute left-4 text-[19px] transition-colors duration-300"
+                                :class="darkMode ? 'text-slate-500 group-focus-within:text-emerald-400' :
+                                    'text-slate-400 group-focus-within:text-emerald-600'">
+                                vpn_key
+                            </span>
+
+                            <input :type="show ? 'text' : 'password'" name="password" id="passwordField"
+                                class="w-full border py-3 pl-11 pr-12 rounded-xl text-sm shadow-sm outline-none transition-all duration-300"
+                                :class="darkMode ?
+                                    'bg-[#050a12] border-[#1e293b] focus:border-emerald-500/50 focus:bg-[#050a12] text-slate-200 placeholder-slate-600 focus:ring-0' :
+                                    'bg-slate-50 border-slate-200 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400 focus:ring-0'"
+                                placeholder="••••••••" required>
+
+                            <button type="button" @click="show = !show" tabindex="-1"
+                                class="absolute right-0 top-0 h-full w-12 flex items-center justify-center focus:outline-none transition-colors duration-200"
+                                :class="darkMode ? 'text-slate-500 hover:text-emerald-400' :
+                                    'text-slate-400 hover:text-emerald-600'">
+                                <span class="material-icons-round text-[19px]"
+                                    x-text="show ? 'visibility_off' : 'visibility'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button id="loginBtn" type="submit"
+                            class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-3 rounded-xl font-semibold text-sm shadow-lg flex items-center justify-center gap-2 active:scale-[0.99] transition-all duration-150 tracking-wide">
+
+                            <span id="btnContent"
+                                class="flex items-center justify-center gap-1.5 opacity-100 transition-opacity duration-150">
+                                <span class="material-icons-round text-base">verified_user</span>
+                                <span>Masuk Sistem</span>
+                            </span>
+
+                            <svg id="btnSpinner" class="hidden animate-spin h-5 w-5 text-white absolute"
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-100" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="py-4 px-8 text-center border-t transition-colors duration-300"
+                :class="darkMode ? 'border-[#1e293b] bg-[#090d16] text-slate-500' :
+                    'border-slate-100 bg-slate-50 text-slate-400'">
+                <p class="text-[9px] font-semibold uppercase tracking-widest leading-relaxed">
+                    &copy; 2026 TeraDev &bull; SMK AHA Kudus
+                </p>
+            </div>
+        </div>
     </div>
-
-    <!-- Floating Contact -->
-    <a href="https://wa.me/6287897315639" target="_blank" class="contact-btn" title="Hubungi Tim IT">
-        <i class="fa fa-headset"></i>
-    </a>
-
-
-    <!-- Footer -->
-    <!-- Footer -->
-    <div class="footer">
-        Website ini dibuat oleh
-        <a href="https://skahida.github.io" target="_blank" class="footer-link">
-            <strong>SKADEV</strong>
-        </a>
-    </div>
-
 
     <script>
-        // Login button loading
-        const loginForm = document.getElementById("loginForm");
-        const loginBtn = document.getElementById("loginBtn");
+        function themeEngine() {
+            return {
+                darkMode: false,
+                liveHour: '00',
+                liveMinute: '00',
+                liveSecond: '00',
 
-        loginForm.addEventListener("submit", function(e) {
-            if (!loginForm.checkValidity()) {
-                e.preventDefault(); // stop submit
-                loginForm.classList.add("was-validated");
-                return;
-            }
+                initEngine() {
+                    if (localStorage.getItem('prakerin-theme') === 'dark') {
+                        this.darkMode = true;
+                    }
+                    this.updateClock();
+                    setInterval(() => {
+                        this.updateClock();
+                    }, 1000);
+                },
 
-            // ubah tombol jadi loading
-            loginBtn.disabled = true;
-            loginBtn.innerHTML = `
-        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-        Loading...
-    `;
-        });
+                updateClock() {
+                    const now = new Date();
+                    this.liveHour = String(now.getHours()).padStart(2, '0');
+                    this.liveMinute = String(now.getMinutes()).padStart(2, '0');
+                    this.liveSecond = String(now.getSeconds()).padStart(2, '0');
+                },
 
-        // Toggle password visibility
-        document.getElementById("togglePassword").addEventListener("click", function() {
-            const passwordField = document.getElementById("passwordField");
-            const icon = this.querySelector("i");
-
-            if (passwordField.type === "password") {
-                passwordField.type = "text";
-                icon.classList.replace("fa-eye", "fa-eye-slash");
-            } else {
-                passwordField.type = "password";
-                icon.classList.replace("fa-eye-slash", "fa-eye");
-            }
-        });
-
-        // Form validation
-        (function() {
-            "use strict";
-            const form = document.getElementById("loginForm");
-
-            form.addEventListener("submit", function(event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
+                toggleTheme() {
+                    this.darkMode = !this.darkMode;
+                    localStorage.setItem('prakerin-theme', this.darkMode ? 'dark' : 'light');
                 }
-                form.classList.add("was-validated");
-            }, false);
-        })();
+            }
+        }
+
+        // Submitting Form Loader Protection
+        const form = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnContent = document.getElementById('btnContent');
+        const btnSpinner = document.getElementById('btnSpinner');
+
+        form.addEventListener('submit', (e) => {
+            if (!form.checkValidity()) return;
+
+            loginBtn.disabled = true;
+            btnContent.classList.remove('opacity-100');
+            btnContent.classList.add('opacity-0');
+            btnSpinner.classList.remove('hidden');
+            loginBtn.classList.add('cursor-not-allowed', 'opacity-85');
+        });
     </script>
 </body>
 

@@ -255,7 +255,7 @@ class GradeController extends Controller
 
             // Apply the search filter if provided
             if ($search) {
-                $reportsQuery->whereHas('user', function ($query) use ($search) {
+                $reportsQuery->whereHas('student', function ($query) use ($search) {
                     $query->where('name', 'like', '%' . $search . '%');
                 });
             }

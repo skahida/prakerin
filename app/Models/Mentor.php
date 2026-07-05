@@ -35,4 +35,10 @@ class Mentor extends Model
     {
         return $this->hasMany(Student::class, 'mentor_id', 'id'); // Menghubungkan mentor dengan banyak siswa
     }
+
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'mentor_id', 'id');
+    }
+
 }

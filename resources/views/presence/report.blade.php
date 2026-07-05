@@ -25,10 +25,6 @@
             font-weight: bold;
         }
 
-        .info {
-            margin-bottom: 10px;
-        }
-
         table {
             width: 100%;
             border-collapse: collapse;
@@ -43,18 +39,27 @@
 
         th {
             text-align: center;
-            background-color: #f0f0f0;
+            background-color: #d9edf7; /* header biru muda */
             vertical-align: middle;
+            padding: 5px;
         }
 
         td {
             text-align: center;
-            padding: 10px;
+            padding: 8px;
         }
 
         td.left {
             text-align: left;
         }
+
+        /* Warna kolom data */
+        td.effective { background-color: #cfe2f3; }   /* biru muda */
+        td.present   { background-color: #d9f2d9; }   /* hijau muda */
+        td.sick      { background-color: #fff3b0; }   /* kuning */
+        td.permission{ background-color: #ffd699; }   /* oranye muda */
+        td.absent    { background-color: #f5b0b0; }   /* merah muda */
+        td.others    { background-color: #e0e0e0; }   /* abu-abu muda */
 
         .footer {
             margin-top: 30px;
@@ -78,17 +83,32 @@
         .stamp {
             width: 130px;
         }
+
+        .note {
+            font-weight: normal;
+            font-size: 10pt;
+            margin-top: 5px;
+        }
     </style>
 </head>
 
 <body>
     <h2>REKAPITULASI KEHADIRAN SISWA PRAKERIN</h2>
-    <h3>SMK NU AL HIDAYAH TAHUN PELAJARAN 2024/2025</h3>
+    <h3>SMK NU AL HIDAYAH TAHUN PELAJARAN 2025/2026</h3>
     <hr>
+    <br>
     <div class="subtitle">{{ $batchName }}</div>
-    <div class="subtitle">Bulan : {{ $yearResult }}</div>
+    <div class="subtitle">Kelas: {{ $className ?? '-' }}</div>  
+    <div class="subtitle">Periode: {{ $yearResult }}</div>
     <br>
 
+    <div class="note" style="font-weight: normal; font-size: 10pt; margin-top:20px;">
+        <strong>Catatan Penting:</strong>  
+        Dokumen ini merupakan rekapitulasi kehadiran siswa Prakerin yang diunduh resmi melalui 
+        <a href="https://prakerin.skahida.my.id" target="_blank"><strong>Aplikasi Prakerin Tracer</strong></a>.  
+    </div>
+    <br>
+    
     <table>
         <thead>
             <tr>
@@ -98,7 +118,6 @@
                 <th rowspan="2">HARI EFEKTIF</th>
                 <th rowspan="2">MASUK</th>
                 <th colspan="4">TIDAK MASUK</th>
-                <th rowspan="2">KETERANGAN</th>
             </tr>
             <tr>
                 <th>S</th>
@@ -113,13 +132,12 @@
                     <td>{{ $index + 1 }}</td>
                     <td class="left">{{ $item->nama }}</td>
                     <td class="left">{{ $item->kelas }}</td>
-                    <td>{{ $item->hari_efektif }}</td>
-                    <td>{{ $item->masuk }}</td>
-                    <td>{{ $item->sakit }}</td>
-                    <td>{{ $item->izin }}</td>
-                    <td>{{ $item->alpa }}</td>
-                    <td>{{ $item->lainnya }}</td>
-                    <td class="left">{{ $item->keterangan }}</td>
+                    <td class="effective">{{ $item->hari_efektif }}</td>
+                    <td class="present">{{ $item->masuk }}</td>
+                    <td class="sick">{{ $item->sakit }}</td>
+                    <td class="permission">{{ $item->izin }}</td>
+                    <td class="absent">{{ $item->alpa }}</td>
+                    <td class="others">{{ $item->lainnya }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -127,11 +145,10 @@
 
     <div class="footer">
         <div class="tanggal">
-            Kudus, 1 April 2025<br>
+            Kudus, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br>
             Kepala SMK NU Al Hidayah
             <div class="ttd">
-                {{-- <img class="stamp" src="{{ public_path('img/stempel.png') }}" alt="Stempel">
-                <br> --}}
+                <br>
                 <strong>Khaerudin, S.Pd.I, S.Kom, M.M.</strong>
             </div>
         </div>

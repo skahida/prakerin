@@ -658,6 +658,22 @@ class DashboardController extends Controller
                 $batchName = 'Semua Gelombang';
             }
 
+            // FILTER KELAS
+            if ($request->filled('class_code')) {
+                $classCode = $request->input('class_code');
+
+                $historyPresences->whereHas('student', function ($q) use ($classCode) {
+                    $q->where('class_code', $classCode);
+                });
+
+                $class = ClassModel::where('code', $classCode)->first();
+                $className = $class ? $class->name : 'Kelas Tidak Ditemukan';
+            } else {
+                $className = 'Semua Kelas';
+            }
+
+            logger('CLASS CODE:', [$request->class_code]);
+
             // Ambil data presensi
             $historyPresences = $historyPresences->get();
 
@@ -696,9 +712,9 @@ class DashboardController extends Controller
                     'dudi' => $presence->student->internshipPlace->name ?? '-',
                     'gelombang' => $presence->student->internshipBatch->batch_name ?? '-',
                     'tahun_pelajaran' => $presence->student->internshipBatch->academic_year ?? '-',
-                    'hari' => $presence->created_at ? Carbon::parse($presence->created_at)->locale('id')->isoFormat('dddd') : '-',
-                    'tanggal' => $presence->created_at ? Carbon::parse($presence->created_at)->timezone('Asia/Jakarta')->format('d-m-Y') : '-',
-                    'masuk' => $presence->created_at ? Carbon::parse($presence->created_at)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
+                    'hari' => $presence->check_in ? Carbon::parse($presence->check_in)->locale('id')->isoFormat('dddd') : '-',
+                    'tanggal' => $presence->check_in ? Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y') : '-',
+                    'masuk' => $presence->check_in ? Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
                     'pulang' => $presence->check_out ? Carbon::parse($presence->check_out)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
                     'lokasi_masuk' => $presence->check_in_location_link ?? null,
                     'lokasi_pulang' => $presence->check_out_location_link ?? null,
@@ -709,59 +725,6 @@ class DashboardController extends Controller
                     'aksi_link' => route('historyPresence.edit', $presence->id),
                 ];
             });
-
-            // foreach ($students as $studentId => $presences) {
-            //     $student = $presences->first()->student;
-
-            //     $present = $presences->filter(fn($p) => $p->check_in !== null)->count();
-            //     $absent = $presences->count() - $present;
-
-            //     $chartData[] = [
-            //         'label' => $student->name,
-            //         'data' => [$present, $absent],
-            //         'present' => $present,
-            //         'batch_id' => $student->internshipBatch ? $student->internshipBatch->id : null,
-            //     ];
-
-            //     $masuk = $presences->where('status', 'present')->count();
-            //     $sakit = $presences->where('status', 'sick')->count();
-            //     $izin = $presences->where('status', 'permission')->count();
-            //     $lainnya = $presences->whereNotIn('status', ['present', 'sick', 'permission', 'absent'])->count();
-
-            //     $keterangan = $presences
-            //         ->where('status', 'sick')
-            //         ->pluck('check_in')
-            //         ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-            //         ->implode(', ');
-
-            //     $hariEfektif = 0;
-            //     if ($request->filled('start_month')) {
-            //         $startDate = Carbon::parse($request->start_month);
-            //         $endDate = $request->filled('end_month') ? Carbon::parse($request->end_month) : $startDate;
-
-            //         for ($date = $startDate->copy()->startOfMonth(); $date <= $endDate->copy()->endOfMonth(); $date->addDay()) {
-            //             if (!$date->isSunday()) {
-            //                 $hariEfektif++;
-            //             }
-            //         }
-            //     }
-
-            //     $alpa = max($hariEfektif - $present - $izin - $sakit - $lainnya, 0);
-
-            //     $rekapTable[] = [
-            //         'nama' => $student->name,
-            //         'kelas' => $student->class->name ?? '-',
-            //         'dudi' => $student->internshipPlace->name ?? '-',
-            //         'pembimbing' => $student->mentor->name ?? '-',
-            //         'hari_efektif' => $hariEfektif,
-            //         'masuk' => $masuk,
-            //         'sakit' => $sakit,
-            //         'izin' => $izin,
-            //         'alpa' => $alpa,
-            //         'lainnya' => $lainnya,
-            //         'keterangan' => $sakit > 0 ? 'Sakit tanggal ' . $keterangan : '-',
-            //     ];
-            // }
 
             foreach ($students as $studentId => $presences) {
                 $student = $presences->first()->student;
@@ -855,6 +818,7 @@ class DashboardController extends Controller
             })->get();
 
             $batchesForFilter = InternshipBatch::where('status_batch', 'active')->get();
+            $classesForFilter = ClassModel::orderBy('name')->get();
 
             return response()->json([
                 'presenceTable' => $presenceTable,
@@ -864,6 +828,7 @@ class DashboardController extends Controller
                 'rekapTable' => $rekapTable,
                 'students' => $studentsForFilter,
                 'batches' => $batchesForFilter,
+                'classes' => $classesForFilter,
             ]);
         } elseif ($role === 'mentor') {
             $mentorId = Auth::user()->mentor->id ?? null;
@@ -917,6 +882,21 @@ class DashboardController extends Controller
                 $batchName = 'Semua Gelombang';
             }
 
+            // === FILTER KELAS ===
+            if ($request->filled('class_code')) {
+                $classCode = $request->input('class_code');
+
+                $historyPresences->whereHas('student', function ($q) use ($classCode) {
+                    $q->where('class_code', $classCode);
+                });
+
+                $class = ClassModel::where('code', $classCode)->first();
+                $className = $class ? $class->name : 'Kelas Tidak Ditemukan';
+            } else {
+                $className = 'Semua Kelas';
+            }
+
+
             // Ambil data presensi
             $historyPresences = $historyPresences->get();
 
@@ -953,9 +933,9 @@ class DashboardController extends Controller
                     'dudi' => $presence->student->internshipPlace->name ?? '-',
                     'gelombang' => $presence->student->internshipBatch->batch_name ?? '-',
                     'tahun_pelajaran' => $presence->student->internshipBatch->academic_year ?? '-',
-                    'hari' => $presence->created_at ? Carbon::parse($presence->created_at)->locale('id')->isoFormat('dddd') : '-',
-                    'tanggal' => $presence->created_at ? Carbon::parse($presence->created_at)->timezone('Asia/Jakarta')->format('d-m-Y') : '-',
-                    'masuk' => $presence->created_at ? Carbon::parse($presence->created_at)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
+                    'hari' => $presence->check_in ? Carbon::parse($presence->check_in)->locale('id')->isoFormat('dddd') : '-',
+                    'tanggal' => $presence->check_in ? Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y') : '-',
+                    'masuk' => $presence->check_in ? Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
                     'pulang' => $presence->check_out ? Carbon::parse($presence->check_out)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
                     'lokasi_masuk' => $presence->check_in_location_link ?? null,
                     'lokasi_pulang' => $presence->check_out_location_link ?? null,
@@ -966,58 +946,6 @@ class DashboardController extends Controller
                     'aksi_link' => route('historyPresence.edit', $presence->id),
                 ];
             });
-
-            // foreach ($students as $studentId => $presences) {
-            //     $student = $presences->first()->student;
-
-            //     $present = $presences->filter(fn($p) => $p->check_in !== null)->count();
-            //     $absent = $presences->count() - $present;
-
-            //     $chartData[] = [
-            //         'label' => $student->name,
-            //         'data' => [$present, $absent],
-            //         'batch_id' => $student->internshipBatch ? $student->internshipBatch->id : null,
-            //     ];
-
-            //     $masuk = $presences->where('status', 'present')->count();
-            //     $sakit = $presences->where('status', 'sick')->count();
-            //     $izin = $presences->where('status', 'permission')->count();
-            //     $lainnya = $presences->whereNotIn('status', ['present', 'sick', 'permission', 'absent'])->count();
-
-            //     $keterangan = $presences
-            //         ->where('status', 'sick')
-            //         ->pluck('check_in')
-            //         ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-            //         ->implode(', ');
-
-            //     $hariEfektif = 0;
-            //     if ($request->filled('start_month')) {
-            //         $startDate = Carbon::parse($request->start_month);
-            //         $endDate = $request->filled('end_month') ? Carbon::parse($request->end_month) : $startDate;
-
-            //         for ($date = $startDate->copy()->startOfMonth(); $date <= $endDate->copy()->endOfMonth(); $date->addDay()) {
-            //             if (!$date->isSunday()) {
-            //                 $hariEfektif++;
-            //             }
-            //         }
-            //     }
-
-            //     $alpa = max($hariEfektif - $present - $izin - $sakit - $lainnya, 0);
-
-            //     $rekapTable[] = [
-            //         'nama' => $student->name,
-            //         'kelas' => $student->class->name ?? '-',
-            //         'dudi' => $student->internshipPlace->name ?? '-',
-            //         'pembimbing' => $student->mentor->name ?? '-',
-            //         'hari_efektif' => $hariEfektif,
-            //         'masuk' => $masuk,
-            //         'sakit' => $sakit,
-            //         'izin' => $izin,
-            //         'alpa' => $alpa,
-            //         'lainnya' => $lainnya,
-            //         'keterangan' => $sakit > 0 ? 'Sakit tanggal ' . $keterangan : '-',
-            //     ];
-            // }
 
             foreach ($students as $studentId => $presences) {
                 $student = $presences->first()->student;
@@ -1114,6 +1042,14 @@ class DashboardController extends Controller
                 $q->where('mentor_id', $mentorId);
             })->where('status_batch', 'active')->get();
 
+            $classesForFilter = ClassModel::whereHas('students', function ($q) use ($mentorId) {
+                $q->where('mentor_id', $mentorId)
+                ->whereHas('internshipBatch', function ($q2) {
+                    $q2->where('status_batch', 'active');
+                });
+            })->orderBy('name')->get();
+
+
             return response()->json([
                 'presenceTable' => $presenceTable,
                 'yearResult' => $yearResult,
@@ -1122,6 +1058,7 @@ class DashboardController extends Controller
                 'rekapTable' => $rekapTable,
                 'students' => $studentsForFilter,
                 'batches' => $batchesForFilter,
+                'classes' => $classesForFilter, // ✅ TAMBAHAN
             ]);
         }
     }

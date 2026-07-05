@@ -217,10 +217,10 @@
                                     <td>{{ $historyPresence->student->internshipBatch->academic_year }}
                                     </td>
                                     <!-- Kolom Hari -->
-                                    <td>{{ \Carbon\Carbon::parse($historyPresence->created_at)->locale('id')->isoFormat('dddd') ?? 'Belum Presensi Masuk' }}
+                                    <td>{{ \Carbon\Carbon::parse($historyPresence->check_in)->locale('id')->isoFormat('dddd') ?? 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
-                                        {{ $historyPresence->created_at ? \Carbon\Carbon::parse($historyPresence->created_at)->timezone('Asia/Jakarta')->format('d-m-Y') : 'Belum Presensi Masuk' }}
+                                        {{ $historyPresence->check_in ? \Carbon\Carbon::parse($historyPresence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y') : 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
                                         {{ $historyPresence->created_at ? \Carbon\Carbon::parse($historyPresence->created_at)->timezone('Asia/Jakarta')->format('H:i:s') : 'Belum Presensi Masuk' }}
@@ -563,10 +563,10 @@
                                     <td>{{ \Carbon\Carbon::parse($historyPresence->check_in)->locale('id')->isoFormat('dddd') ?? 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
-                                        {{ $historyPresence->created_at ? \Carbon\Carbon::parse($historyPresence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y') : 'Belum Presensi Masuk' }}
+                                        {{ $historyPresence->check_in ? \Carbon\Carbon::parse($historyPresence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y') : 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
-                                        {{ $historyPresence->created_at ? \Carbon\Carbon::parse($historyPresence->check_in)->timezone('Asia/Jakarta')->format('H:i:s') : 'Belum Presensi Masuk' }}
+                                        {{ $historyPresence->check_in ? \Carbon\Carbon::parse($historyPresence->check_in)->timezone('Asia/Jakarta')->format('H:i:s') : 'Belum Presensi Masuk' }}
                                     </td>
                                     <td>
                                         {{ $historyPresence->check_out ? \Carbon\Carbon::parse($historyPresence->check_out)->timezone('Asia/Jakarta')->format('H:i:s') : '-' }}

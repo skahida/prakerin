@@ -51,12 +51,15 @@ class MentorController extends Controller
             'telegram_number' => 'nullable|string|max:255',
             'username' => 'required|string|max:255',
             'password' => 'required|string|max:255',
+            'foto_url' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
             'name.required' => 'Nama tidak boleh kosong',
             'gender.required' => 'Jenis kelamin tidak boleh kosong',
             'whatsapp_number.required' => 'Nomor WhatsApp tidak boleh kosong',
             'username.required' => 'Username tidak boleh kosong',
             'password.required' => 'Password tidak boleh kosong',
+            'foto_url.image' => 'File harus berupa gambar (jpg, jpeg, png)',
+            'foto_url.max' => 'Ukuran foto maksimal 2MB',
         ]);
 
         // Persiapkan data untuk membuat data Letter baru
@@ -73,6 +76,14 @@ class MentorController extends Controller
             'role' => "mentor",
             'is_active' => true,
         ]);
+
+        // Upload foto jika ada
+        if ($request->hasFile('foto_url')) {
+            $path = $request->file('foto_url')->store('uploads/foto', 'public');
+            $user->foto_url = $path;
+        }
+
+        $user->save();
 
         // Simpan data 
         Mentor::create([
@@ -189,12 +200,15 @@ class MentorController extends Controller
             'telegram_number' => 'nullable|string|max:255',
             'username' => 'required|string|max:255',
             'password' => 'required|string|max:255',
+            'foto_url' => 'nullable|image|mimes:jpg,jpeg,png|max:2048', // validasi foto
         ], [
             'name.required' => 'Nama tidak boleh kosong',
             'gender.required' => 'Jenis kelamin tidak boleh kosong',
             'whatsapp_number.required' => 'Nomor WhatsApp tidak boleh kosong',
             'username.required' => 'Username tidak boleh kosong',
             'password.required' => 'Password tidak boleh kosong',
+            'foto_url.image' => 'File harus berupa gambar (jpg, jpeg, png)',
+            'foto_url.max' => 'Ukuran foto maksimal 2MB',
         ]);
 
         // Persiapkan data untuk update, pastikan menyertakan field 'address'
@@ -219,6 +233,20 @@ class MentorController extends Controller
             'name' => $request->name,
             'username' => $request->username,
         ]);
+
+        // Upload foto baru jika ada
+        if ($request->hasFile('foto_url')) {
+            // Hapus foto lama jika ada
+            if ($user->foto_url && \Storage::disk('public')->exists($user->foto_url)) {
+                \Storage::disk('public')->delete($user->foto_url);
+            }
+
+            // Simpan foto baru
+            $path = $request->file('foto_url')->store('uploads/foto', 'public');
+            $user->foto_url = $path;
+        }
+
+        $user->save();
 
         // Redirect dengan pesan sukses
         return redirect()->route('mentor')->with('success', 'Data berhasil diperbarui.');

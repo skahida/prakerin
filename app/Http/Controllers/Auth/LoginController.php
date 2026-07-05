@@ -20,12 +20,12 @@ class LoginController extends Controller
             'username' => [
                 'required',
                 'string',
-                'exists:users,username', // Pastikan email ada di database
+                'exists:users,username',
             ],
             'password' => [
                 'required',
                 'string',
-                'min:8', // Panjang password minimal 8 karakter
+                'min:8',
             ],
         ], [
             'username.required' => 'Username harus diisi.',
@@ -43,46 +43,54 @@ class LoginController extends Controller
             ]);
         }
 
-        // Batasi jumlah percobaan login untuk mencegah brute force
+        // Batasi jumlah percobaan login
         if ($this->hasTooManyLoginAttempts($request)) {
             return $this->sendLockoutResponse($request);
         }
 
-        // Cek login dan password
+        // Cek login
         if (Auth::attempt($request->only('username', 'password'))) {
-            // Reset percobaan login
+
             $this->clearLoginAttempts($request);
 
-            // Regenerasi CSRF token setelah login
-            $request->session()->regenerateToken(); // Memperbarui CSRF token
+            // regenerate session ID agar record session benar-benar dibuat
+            $request->session()->regenerate();
 
-            // Ambil user yang terautentikasi
+            // regenerate token CSRF
+            $request->session()->regenerateToken();
+
             $user = Auth::user();
 
-            // Simpan informasi pengguna di sesi
+            // Simpan informasi pengguna
             $this->storeUserSession($user);
 
-            // Cek apakah password yang digunakan adalah password default 'prakerintracer'
+            // UPDATE user_id pada session yang baru saja dibuat
+            \DB::table('sessions')
+                ->where('id', session()->getId())
+                ->update([
+                    'user_id'       => $user->id,
+                    'last_activity' => now()->timestamp
+                ]);
+
+            // Password default checking
             if ($user->role == 'student') {
                 if (Hash::check('prakerin', $user->password)) {
-                    // Jika password masih 'prakerintracer', arahkan ke route dengan notifikasi untuk mengganti password
                     session(['requires_password_update' => true]);
-
-                    return redirect()->route('dashboard')->with('success', 'Login berhasil.');
                 }
             }
 
-            // Redirect ke dashboard setelah login berhasil
             return redirect()->route('dashboard')->with('success', 'Login berhasil.');
         }
 
-        // Increment failed login attempts
+
+        // Jika gagal
         $this->incrementLoginAttempts($request);
 
         throw ValidationException::withMessages([
             'username' => 'Username atau password salah.',
         ]);
     }
+
 
     //  Fungsi untuk menyimpan informasi pengguna ke sesi
     protected function storeUserSession($user)

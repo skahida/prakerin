@@ -25,6 +25,7 @@ class Presence extends Model
         'check_out_location_link',
         'status',
         'note',
+        'proof_photo',
     ];
 
     public function student()

@@ -298,128 +298,128 @@
 
 
 @if (session('requires_password_update'))
-<script>
-    function showPasswordUpdateModal() {
-        Swal.fire({
-            title: 'Untuk alasan keamanan, Anda harus memperbarui password Anda sebelum melanjutkan.',
-            html: `
+    <script>
+        function showPasswordUpdateModal() {
+            Swal.fire({
+                title: 'Untuk alasan keamanan, Anda harus memperbarui password Anda sebelum melanjutkan.',
+                html: `
                     <input type="text" id="newPassword" class="swal2-input" placeholder="Masukkan password baru" autofocus>
                     <p style="font-size: 12px; color: #777; margin-top: 5px;">
                         Password harus memiliki minimal 6 karakter dan mengandung kombinasi huruf, angka, serta simbol.
                     </p>
                 `,
-            confirmButtonText: 'Simpan',
-            showCancelButton: false, // Menghilangkan tombol batal, hanya tombol simpan
-            preConfirm: () => {
-                const newPassword = document.getElementById('newPassword').value;
+                confirmButtonText: 'Simpan',
+                showCancelButton: false, // Menghilangkan tombol batal, hanya tombol simpan
+                preConfirm: () => {
+                    const newPassword = document.getElementById('newPassword').value;
 
-                // Validasi password: minimal 6 karakter, mengandung huruf, angka, dan simbol
-                const passwordPattern =
-                    /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+={}\[\]:;"'<>,.?/\\|-]).{6,}$/;
+                    // Validasi password: minimal 6 karakter, mengandung huruf, angka, dan simbol
+                    const passwordPattern =
+                        /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+={}\[\]:;"'<>,.?/\\|-]).{6,}$/;
 
-                if (!newPassword) {
-                    Swal.showValidationMessage('Password tidak boleh kosong!');
-                } else if (newPassword.length < 6) {
-                    Swal.showValidationMessage('Password harus terdiri dari minimal 6 karakter!');
-                } else if (!passwordPattern.test(newPassword)) {
-                    Swal.showValidationMessage(
-                        'Password harus mengandung kombinasi huruf, angka, dan simbol!');
+                    if (!newPassword) {
+                        Swal.showValidationMessage('Password tidak boleh kosong!');
+                    } else if (newPassword.length < 6) {
+                        Swal.showValidationMessage('Password harus terdiri dari minimal 6 karakter!');
+                    } else if (!passwordPattern.test(newPassword)) {
+                        Swal.showValidationMessage(
+                            'Password harus mengandung kombinasi huruf, angka, dan simbol!');
+                    }
+
+                    return newPassword;
                 }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const newPassword = result.value;
+                    if (newPassword) {
+                        // Menampilkan animasi loading tanpa tombol OK dan dengan progress
+                        Swal.fire({
+                            title: 'Memproses...',
+                            text: 'Silakan tunggu sebentar.',
+                            icon: 'info',
+                            showConfirmButton: false, // Menghilangkan tombol konfirmasi
+                            allowOutsideClick: false, // Tidak bisa menutup SweetAlert dengan klik luar
+                            didOpen: () => {
+                                Swal.showLoading(); // Menampilkan animasi loading
+                            },
+                            willClose: () => {
+                                // Callback ketika Swal ditutup
+                            }
+                        });
 
-                return newPassword;
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const newPassword = result.value;
-                if (newPassword) {
-                    // Menampilkan animasi loading tanpa tombol OK dan dengan progress
-                    Swal.fire({
-                        title: 'Memproses...',
-                        text: 'Silakan tunggu sebentar.',
-                        icon: 'info',
-                        showConfirmButton: false, // Menghilangkan tombol konfirmasi
-                        allowOutsideClick: false, // Tidak bisa menutup SweetAlert dengan klik luar
-                        didOpen: () => {
-                            Swal.showLoading(); // Menampilkan animasi loading
-                        },
-                        willClose: () => {
-                            // Callback ketika Swal ditutup
-                        }
-                    });
+                        // Proses AJAX untuk mengupdate password
+                        $.ajax({
+                            url: '/update-password', // Ganti dengan URL atau route yang sesuai
+                            method: 'POST',
+                            data: {
+                                password: newPassword, // Password baru
+                                _token: '{{ csrf_token() }}' // Pastikan token CSRF dikirimkan
+                            },
+                            success: function(response) {
+                                // Progres selesai, tampilkan pesan sukses dan refresh
+                                Swal.fire({
+                                    title: 'Sukses!',
+                                    text: response.message,
+                                    icon: 'success',
+                                    showConfirmButton: false, // Tidak menampilkan tombol OK
+                                    timer: 1500, // Delay 1.5 detik sebelum redirect
+                                    timerProgressBar: true, // Menampilkan progress bar
+                                    didOpen: () => {
+                                        Swal.showLoading(); // Menampilkan animasi loading
+                                        const timer = Swal.getPopup().querySelector("b");
+                                        timerInterval = setInterval(() => {
+                                            timer.textContent =
+                                                `${Swal.getTimerLeft()}`;
+                                        }, 100);
+                                    },
+                                    willClose: () => {
+                                        clearInterval(
+                                            timerInterval
+                                        ); // Menghapus interval saat modal ditutup
+                                    }
+                                }).then((result) => {
+                                    if (result.dismiss === Swal.DismissReason.timer) {
+                                        console.log("I was closed by the timer");
+                                    }
 
-                    // Proses AJAX untuk mengupdate password
-                    $.ajax({
-                        url: '/update-password', // Ganti dengan URL atau route yang sesuai
-                        method: 'POST',
-                        data: {
-                            password: newPassword, // Password baru
-                            _token: '{{ csrf_token() }}' // Pastikan token CSRF dikirimkan
-                        },
-                        success: function(response) {
-                            // Progres selesai, tampilkan pesan sukses dan refresh
-                            Swal.fire({
-                                title: 'Sukses!',
-                                text: response.message,
-                                icon: 'success',
-                                showConfirmButton: false, // Tidak menampilkan tombol OK
-                                timer: 1500, // Delay 1.5 detik sebelum redirect
-                                timerProgressBar: true, // Menampilkan progress bar
-                                didOpen: () => {
-                                    Swal.showLoading(); // Menampilkan animasi loading
-                                    const timer = Swal.getPopup().querySelector("b");
-                                    timerInterval = setInterval(() => {
-                                        timer.textContent =
-                                            `${Swal.getTimerLeft()}`;
-                                    }, 100);
-                                },
-                                willClose: () => {
-                                    clearInterval(
-                                        timerInterval
-                                    ); // Menghapus interval saat modal ditutup
-                                }
-                            }).then((result) => {
-                                if (result.dismiss === Swal.DismissReason.timer) {
-                                    console.log("I was closed by the timer");
-                                }
+                                    // Redirect otomatis ke halaman logout setelah delay
+                                    window.location.href =
+                                        '{{ route('
+                                                                        logout ') }}'; // Ganti dengan route yang sesuai
+                                });
 
-                                // Redirect otomatis ke halaman logout setelah delay
-                                window.location.href =
-                                    '{{ route('
-                                logout ') }}'; // Ganti dengan route yang sesuai
-                            });
+                            },
+                            error: function(xhr, status, error) {
+                                // Tangani error jika terjadi
+                                const errorMessage = xhr.responseJSON.message ||
+                                    'Terjadi kesalahan. Silakan coba lagi.';
+                                Swal.fire('Terjadi kesalahan', errorMessage, 'error');
+                            }
+                        });
 
-                        },
-                        error: function(xhr, status, error) {
-                            // Tangani error jika terjadi
-                            const errorMessage = xhr.responseJSON.message ||
-                                'Terjadi kesalahan. Silakan coba lagi.';
-                            Swal.fire('Terjadi kesalahan', errorMessage, 'error');
-                        }
-                    });
-
+                    } else {
+                        // Jika password kosong atau tidak valid, teruskan tampilkan Swal
+                        showPasswordUpdateModal(); // Menampilkan modal kembali jika input tidak valid
+                    }
                 } else {
-                    // Jika password kosong atau tidak valid, teruskan tampilkan Swal
-                    showPasswordUpdateModal(); // Menampilkan modal kembali jika input tidak valid
+                    // Menampilkan Swal kembali jika user menekan ESC atau klik luar
+                    showPasswordUpdateModal();
                 }
-            } else {
-                // Menampilkan Swal kembali jika user menekan ESC atau klik luar
-                showPasswordUpdateModal();
-            }
-        });
-    }
+            });
+        }
 
-    // Menampilkan modal pertama kali
-    showPasswordUpdateModal();
-</script>
+        // Menampilkan modal pertama kali
+        showPasswordUpdateModal();
+    </script>
 @endif
 
 
 @if (session('requires_chat_id_update') && session('ses_role') == 'mentor')
-<script>
-    function showChatIdUpdateModal() {
-        Swal.fire({
-            title: 'Untuk melanjutkan, Anda perlu mendapatkan Chat ID Telegram Anda.',
-            html: `
+    <script>
+        function showChatIdUpdateModal() {
+            Swal.fire({
+                title: 'Untuk melanjutkan, Anda perlu mendapatkan Chat ID Telegram Anda.',
+                html: `
                 <p style="font-size: 14px;">Klik link di bawah ini untuk mendapatkan Chat ID Anda dari bot Telegram:</p>
                 <a href="https://t.me/PrakerinTracerBot" target="_blank" style="font-size: 16px; color: #008CBA; text-decoration: underline;">Klik di sini untuk mendapatkan Chat ID</a>
                 <p style="font-size: 12px; color: #777; margin-top: 10px;">
@@ -430,63 +430,63 @@
                 </p>
                 <input type="text" id="chat_id" class="swal2-input" placeholder="Masukkan Chat ID Telegram" autofocus>
             `,
-            confirmButtonText: 'Simpan Chat ID',
-            showCancelButton: true,
-            preConfirm: () => {
-                const chatId = document.getElementById('chat_id').value;
-                if (!chatId) {
-                    Swal.showValidationMessage('Chat ID tidak boleh kosong!');
-                }
-                return chatId;
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const chatId = result.value;
-
-                // Menampilkan pesan "Tunggu Sebentar" sebelum proses AJAX
-                Swal.fire({
-                    title: 'Tunggu Sebentar',
-                    text: 'Sedang mengirim data...',
-                    icon: 'info',
-                    showConfirmButton: false,
-                    allowOutsideClick: false
-                });
-
-                // Kirim Chat ID ke server menggunakan AJAX
-                $.ajax({
-                    url: "{{ route('mentor.updateChatId ') }}",
-                    method: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        chat_id: chatId
-                    },
-                    success: function(response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Chat ID Berhasil Diperbarui!',
-                            text: 'Chat ID Anda telah berhasil disimpan.',
-                            timer: 1500,
-                            willClose: () => {
-                                window.location.href = "{{ route('logout ') }}";
-                            }
-                        });
-                    },
-                    error: function(xhr, status, error) {
-                        const errorMessage = xhr.responseJSON.message ||
-                            'Terjadi kesalahan. Silakan coba lagi.';
-                        Swal.fire('Terjadi kesalahan', errorMessage, 'error');
+                confirmButtonText: 'Simpan Chat ID',
+                showCancelButton: true,
+                preConfirm: () => {
+                    const chatId = document.getElementById('chat_id').value;
+                    if (!chatId) {
+                        Swal.showValidationMessage('Chat ID tidak boleh kosong!');
                     }
-                });
-            } else {
-                // Jika mentor menekan tombol batal, tampilkan modal kembali
-                showChatIdUpdateModal();
-            }
-        });
-    }
+                    return chatId;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const chatId = result.value;
 
-    // Menampilkan modal pertama kali
-    showChatIdUpdateModal();
-</script>
+                    // Menampilkan pesan "Tunggu Sebentar" sebelum proses AJAX
+                    Swal.fire({
+                        title: 'Tunggu Sebentar',
+                        text: 'Sedang mengirim data...',
+                        icon: 'info',
+                        showConfirmButton: false,
+                        allowOutsideClick: false
+                    });
+
+                    // Kirim Chat ID ke server menggunakan AJAX
+                    $.ajax({
+                        url: "{{ route('mentor.updateChatId ') }}",
+                        method: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            chat_id: chatId
+                        },
+                        success: function(response) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Chat ID Berhasil Diperbarui!',
+                                text: 'Chat ID Anda telah berhasil disimpan.',
+                                timer: 1500,
+                                willClose: () => {
+                                    window.location.href = "{{ route('logout ') }}";
+                                }
+                            });
+                        },
+                        error: function(xhr, status, error) {
+                            const errorMessage = xhr.responseJSON.message ||
+                                'Terjadi kesalahan. Silakan coba lagi.';
+                            Swal.fire('Terjadi kesalahan', errorMessage, 'error');
+                        }
+                    });
+                } else {
+                    // Jika mentor menekan tombol batal, tampilkan modal kembali
+                    showChatIdUpdateModal();
+                }
+            });
+        }
+
+        // Menampilkan modal pertama kali
+        showChatIdUpdateModal();
+    </script>
 @endif
 
 
@@ -1120,11 +1120,13 @@
     function fetchAttendanceData() {
         currentPage = 1; // <--- tambahin ini
         var studentName = $('#studentFilter').val(); // Ambil nama siswa yang dipilih dari dropdown
+        var classCode = $('#classFilter').val();
         var batchName = $('#batchFilter').val(); // Batch yang dipilih
         var startMonth = $('#startMonthFilter').val();
         var endMonth = $('#endMonthFilter').val();
         var startDate = $('#startDateFilter').val();
         var endDate = $('#endDateFilter').val();
+
 
         // Jika "All Students" dipilih, kirimkan null atau string kosong untuk parameter filter
         if (studentName === "Semua Siswa") {
@@ -1140,6 +1142,7 @@
             method: 'GET',
             data: {
                 student_name: studentName, // Kirimkan filter nama siswa ke backend
+                class_code: classCode,
                 batch_name: batchName, // Kirimkan filter batch ke backend
                 start_month: startMonth,
                 end_month: endMonth,
@@ -1148,6 +1151,7 @@
             },
             success: function(response) {
                 var chartData = response.attendanceData; // Ambil data absensi dari response
+                var classes = response.classes;
                 var students = response.students; // Ambil data siswa untuk mengisi dropdown filter
                 var batches = response.batches; // Ambil data batches untuk mengisi dropdown filter
                 var yearResult = response.yearResult; // Ambil yearResult
@@ -1175,6 +1179,9 @@
                 // Isi dropdown filter batch
                 populateBatchFilter(batches, batchName);
 
+                // Isi dropdown filter batch
+                populateClassFilter(classes, classCode);
+
                 // 🆕 Tambahin ini buat nampilin data di tabel rekap
                 if (response.rekapTable) {
                     // Tampilkan yearResult di tempat yang sesuai di frontend, misalnya di elemen dengan ID #yearResult
@@ -1189,20 +1196,21 @@
                     populateRekapTable(response.rekapTable);
                 }
 
-                // Cek jika bulan dipilih dan ada data
-                if (startMonth && chartData.length > 0) {
-                    $('#printButton').show();
-
+                if (response.rekapTable && response.rekapTable.length > 0) {
+                    $('#printButton').show(); // langsung show
                     var printUrl = "{{ route('print.presence') }}" +
-                        '?search=' + encodeURIComponent(studentName) +
-                        '&batch_search=' + encodeURIComponent(batchName) +
-                        '&start_month=' + encodeURIComponent(startMonth) +
-                        '&end_month=' + encodeURIComponent(endMonth);
-
+                        '?student=' + encodeURIComponent(studentName || '') +
+                        '&class_code=' + encodeURIComponent(classCode || '') +
+                        '&batch=' + encodeURIComponent(batchName || '') +
+                        '&start_month=' + encodeURIComponent(startMonth || '') +
+                        '&end_month=' + encodeURIComponent(endMonth || '') +
+                        '&start_date=' + encodeURIComponent(startDate || '') +
+                        '&end_date=' + encodeURIComponent(endDate || '');
                     $('#printButtonLink').attr('href', printUrl);
                 } else {
                     $('#printButton').hide();
                 }
+
 
                 $('.selectpicker').selectpicker('refresh');
             },
@@ -1241,6 +1249,25 @@
                 ' | TP.' + batch.academic_year + '</option>');
         });
     }
+
+    function populateClassFilter(classes, selectedClass) {
+        var classFilter = $('#classFilter');
+        classFilter.empty();
+
+        // VALUE KOSONG, BUKAN STRING
+        classFilter.append('<option value="">Semua Kelas</option>');
+
+        classes.forEach(function(cls) {
+            var selected = (cls.code === selectedClass) ? 'selected' : '';
+            classFilter.append(
+                '<option value="' + cls.code + '" ' + selected + '>' +
+                cls.name +
+                '</option>'
+            );
+        });
+    }
+
+
 
     let currentPage = 1; // Track current page
     const rowsPerPage = 5; // Set the number of rows per page
@@ -1478,22 +1505,41 @@
                                     fetch(`/presence/${id}`, {
                                             method: 'DELETE',
                                             headers: {
-                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                                'X-CSRF-TOKEN': document
+                                                    .querySelector(
+                                                        'meta[name="csrf-token"]'
+                                                        )
+                                                    .getAttribute(
+                                                        'content'
+                                                        ),
                                                 'Accept': 'application/json'
                                             }
                                         })
                                         .then(res => res.json())
                                         .then(res => {
                                             if (res.success) {
-                                                Swal.fire("Terhapus!", res.message, "success").then(() => {
-                                                    location.reload();
+                                                Swal.fire(
+                                                    "Terhapus!",
+                                                    res
+                                                    .message,
+                                                    "success"
+                                                    ).then(
+                                                () => {
+                                                    location
+                                                        .reload();
                                                 });
                                             } else {
-                                                Swal.fire("Gagal!", res.message, "error");
+                                                Swal.fire(
+                                                    "Gagal!",
+                                                    res
+                                                    .message,
+                                                    "error");
                                             }
                                         })
                                         .catch(err => {
-                                            Swal.fire("Error!", "Terjadi kesalahan server", "error");
+                                            Swal.fire("Error!",
+                                                "Terjadi kesalahan server",
+                                                "error");
                                         });
                                 }
                             });
@@ -1512,9 +1558,10 @@
         fetchAttendanceData();
 
         // Ambil data absensi lagi ketika filter siswa atau batch berubah
-        $('#studentFilter, #batchFilter, #startMonthFilter, #endMonthFilter, #startDateFilter, #endDateFilter').change(function() {
-            fetchAttendanceData();
-        });
+        $('#studentFilter, #batchFilter, #classFilter, #startMonthFilter, #endMonthFilter, #startDateFilter, #endDateFilter')
+            .change(function() {
+                fetchAttendanceData();
+            });
     });
 
     document.querySelectorAll('.delete-btn').forEach(button => {
@@ -1550,11 +1597,13 @@
                                     location.reload(); // reload halaman
                                 });
                             } else {
-                                Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus.', 'error');
+                                Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus.',
+                                    'error');
                             }
                         })
                         .catch(() => {
-                            Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus.', 'error');
+                            Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus.',
+                            'error');
                         });
                 }
             });

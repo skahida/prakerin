@@ -83,7 +83,7 @@ class MonitoringController extends Controller
         $request->validate([
             'place_code' => 'required|exists:internship_places,code',
             'monitor_photo' => 'required|image|mimes:jpeg,png,jpg,heic',
-            'status' => 'required|in:Penerjunan,Monitoring 1,Monitoring 2,Penarikan',
+            'status' => 'required|in:Penerjunan,Monitoring 1,Monitoring 2,Monitoring 3,Penarikan',
         ]);
 
         // simpan foto
