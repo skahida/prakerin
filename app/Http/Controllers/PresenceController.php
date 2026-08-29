@@ -386,242 +386,239 @@ class PresenceController extends Controller
     // }
 
     public function print(Request $request)
-{
-    $search      = $request->input('search', '');
-    $batchName   = $request->input('batch_search');
-    $startMonth  = $request->input('start_month');
-    $endMonth    = $request->input('end_month');
-    $startDate   = $request->input('start_date');
-    $endDate     = $request->input('end_date');
+    {
+        $search      = $request->input('search', '');
+        $batchName   = $request->input('batch_search');
+        $startMonth  = $request->input('start_month');
+        $endMonth    = $request->input('end_month');
+        $startDate   = $request->input('start_date');
+        $endDate     = $request->input('end_date');
 
-    $historyPresencesQuery = Presence::with([
-        'student.internshipBatch',
-        'student.internshipPlace',
-        'student.class',
-        'student.department'
-    ])->orderBy('check_in', 'asc');
+        $historyPresencesQuery = Presence::with([
+            'student.internshipBatch',
+            'student.internshipPlace',
+            'student.class',
+            'student.department'
+        ])->orderBy('check_in', 'asc');
 
-    // 🔎 Filter siswa
-    if ($search) {
-        $historyPresencesQuery->whereHas('student', function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%");
-        });
+        // 🔎 Filter siswa
+        if ($search) {
+            $historyPresencesQuery->whereHas('student', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        // 🎓 Filter gelombang
+        if ($batchName) {
+            $historyPresencesQuery->whereHas('student.internshipBatch', function ($q) use ($batchName) {
+                $q->where('id', $batchName);
+            });
+        }
+
+        // 📆 Filter bulan
+        if ($startMonth && $endMonth) {
+            $historyPresencesQuery->whereBetween('created_at', [
+                \Carbon\Carbon::parse($startMonth)->startOfMonth(),
+                \Carbon\Carbon::parse($endMonth)->endOfMonth()
+            ]);
+        } elseif ($startMonth) {
+            $historyPresencesQuery->where(
+                'created_at',
+                '>=',
+                \Carbon\Carbon::parse($startMonth)->startOfMonth()
+            );
+        } elseif ($endMonth) {
+            $historyPresencesQuery->where(
+                'created_at',
+                '<=',
+                \Carbon\Carbon::parse($endMonth)->endOfMonth()
+            );
+        }
+
+        // 🗓 Filter tanggal
+        if ($startDate && $endDate) {
+            $historyPresencesQuery->whereBetween('created_at', [
+                \Carbon\Carbon::parse($startDate)->startOfDay(),
+                \Carbon\Carbon::parse($endDate)->endOfDay()
+            ]);
+        } elseif ($startDate) {
+            $historyPresencesQuery->whereDate('created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $historyPresencesQuery->whereDate('created_at', '<=', $endDate);
+        }
+
+        $historyPresences = $historyPresencesQuery->get();
+
+        // 🧾 Generate PDF (wkhtmltopdf)
+        $pdf = \Barryvdh\Snappy\Facades\SnappyPdf::loadView(
+            'presence.print',
+            compact('historyPresences')
+        )
+            ->setPaper('a4')
+            ->setOrientation('portrait')
+            ->setOption('margin-top', '10mm')
+            ->setOption('margin-bottom', '10mm')
+            ->setOption('margin-left', '10mm')
+            ->setOption('margin-right', '10mm')
+            ->setOption('enable-local-file-access', true);
+
+        return $pdf->inline('laporan-presensi-magang.pdf');
     }
-
-    // 🎓 Filter gelombang
-    if ($batchName) {
-        $historyPresencesQuery->whereHas('student.internshipBatch', function ($q) use ($batchName) {
-            $q->where('id', $batchName);
-        });
-    }
-
-    // 📆 Filter bulan
-    if ($startMonth && $endMonth) {
-        $historyPresencesQuery->whereBetween('created_at', [
-            \Carbon\Carbon::parse($startMonth)->startOfMonth(),
-            \Carbon\Carbon::parse($endMonth)->endOfMonth()
-        ]);
-    } elseif ($startMonth) {
-        $historyPresencesQuery->where(
-            'created_at',
-            '>=',
-            \Carbon\Carbon::parse($startMonth)->startOfMonth()
-        );
-    } elseif ($endMonth) {
-        $historyPresencesQuery->where(
-            'created_at',
-            '<=',
-            \Carbon\Carbon::parse($endMonth)->endOfMonth()
-        );
-    }
-
-    // 🗓 Filter tanggal
-    if ($startDate && $endDate) {
-        $historyPresencesQuery->whereBetween('created_at', [
-            \Carbon\Carbon::parse($startDate)->startOfDay(),
-            \Carbon\Carbon::parse($endDate)->endOfDay()
-        ]);
-    } elseif ($startDate) {
-        $historyPresencesQuery->whereDate('created_at', '>=', $startDate);
-    } elseif ($endDate) {
-        $historyPresencesQuery->whereDate('created_at', '<=', $endDate);
-    }
-
-    $historyPresences = $historyPresencesQuery->get();
-
-    // 🧾 Generate PDF (wkhtmltopdf)
-    $pdf = \Barryvdh\Snappy\Facades\SnappyPdf::loadView(
-        'presence.print',
-        compact('historyPresences')
-    )
-    ->setPaper('a4')
-    ->setOrientation('portrait')
-    ->setOption('margin-top', '10mm')
-    ->setOption('margin-bottom', '10mm')
-    ->setOption('margin-left', '10mm')
-    ->setOption('margin-right', '10mm')
-    ->setOption('enable-local-file-access', true);
-
-    return $pdf->inline('laporan-presensi-magang.pdf');
-}
 
 
 
 
 
     public function printPresences(Request $request)
-{
-    $batchId     = $request->input('batch_search');
-    $search      = $request->input('search');
-    $classCode   = $request->input('class_code');
+    {
+        $batchId     = $request->input('batch_search');
+        $search      = $request->input('search');
+        $classCode   = $request->input('class_code');
 
-    $startMonth  = $request->input('start_month');       // Format: 'YYYY-MM'
-    $endMonth    = $request->input('end_month');         // Format: 'YYYY-MM' (optional)
-    $startDate   = $request->input('start_date');       // Format: 'YYYY-MM-DD'
-    $endDate     = $request->input('end_date');         // Format: 'YYYY-MM-DD' (optional)
+        $startMonth  = $request->input('start_month');       // Format: 'YYYY-MM'
+        $endMonth    = $request->input('end_month');         // Format: 'YYYY-MM' (optional)
+        $startDate   = $request->input('start_date');       // Format: 'YYYY-MM-DD'
+        $endDate     = $request->input('end_date');         // Format: 'YYYY-MM-DD' (optional)
 
-    Carbon::setLocale('id');
+        Carbon::setLocale('id');
 
-    // Tentukan range tanggal
-    if ($startDate) {
-        $start = Carbon::parse($startDate)->startOfDay();
-        $end   = $endDate ? Carbon::parse($endDate)->endOfDay() : $start->copy()->endOfDay();
-        $yearResult = $start->translatedFormat('d F Y') . ($endDate ? ' - ' . $end->translatedFormat('d F Y') : '');
-    } elseif ($startMonth) {
-        $start = Carbon::createFromFormat('Y-m', $startMonth)->startOfMonth();
-        $end   = $endMonth ? Carbon::createFromFormat('Y-m', $endMonth)->endOfMonth() : $start->copy()->endOfMonth();
-        $yearResult = $start->translatedFormat('F') . ($endMonth ? ' - ' . $end->translatedFormat('F Y') : ' ' . $start->translatedFormat('Y'));
-    } else {
-        $start = $end = null;
-        $yearResult = '';
+        // Tentukan range tanggal
+        if ($startDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end   = $endDate ? Carbon::parse($endDate)->endOfDay() : $start->copy()->endOfDay();
+            $yearResult = $start->translatedFormat('d F Y') . ($endDate ? ' - ' . $end->translatedFormat('d F Y') : '');
+        } elseif ($startMonth) {
+            $start = Carbon::createFromFormat('Y-m', $startMonth)->startOfMonth();
+            $end   = $endMonth ? Carbon::createFromFormat('Y-m', $endMonth)->endOfMonth() : $start->copy()->endOfMonth();
+            $yearResult = $start->translatedFormat('F') . ($endMonth ? ' - ' . $end->translatedFormat('F Y') : ' ' . $start->translatedFormat('Y'));
+        } else {
+            $start = $end = null;
+            $yearResult = '';
+        }
+
+        // Query siswa sesuai filter batch, class, search
+        $studentsQuery = Student::with(['class', 'internshipBatch'])
+            ->whereHas('internshipBatch', fn($q) => $q->where('status_batch', 'active'));
+
+        if ($batchId) {
+            $studentsQuery->whereHas('internshipBatch', fn($q) => $q->where('id', $batchId));
+            $batch = InternshipBatch::find($batchId);
+            $batchName = $batch ? $batch->batch_name : 'Gelombang Tidak Ditemukan';
+        } else {
+            $batchName = 'Semua Gelombang';
+        }
+
+        if ($classCode) {
+            $studentsQuery->whereHas('class', fn($q) => $q->where('class_code', $classCode));
+        }
+
+        if ($search) {
+            $studentsQuery->where('name', 'like', '%' . $search . '%');
+        }
+
+        $students = $studentsQuery->orderBy('name', 'asc')->get();
+
+        // Hitung hari efektif
+        $hariEfektif = 77;
+        // if ($start && $end) {
+        //     $hariEfektif = Presence::whereBetween('check_in', [$start, $end])
+        //         ->selectRaw('DATE(check_in) as tgl')
+        //         ->groupBy('tgl')
+        //         ->pluck('tgl')
+        //         ->count();
+        // }
+
+
+        $rekap = [];
+        foreach ($students as $student) {
+            // Hitung kehadiran per status untuk batch aktif
+            $presencesQuery = Presence::where('student_id', $student->id)
+                ->whereHas('student.internshipBatch', function ($q) {
+                    $q->where('status_batch', 'active');
+                });
+
+            if ($start && $end) {
+                $presencesQuery->whereBetween('created_at', [$start, $end]);
+            }
+
+            $presences = $presencesQuery->get();
+
+            // Group by tanggal (hanya tanggal, bukan waktu)
+            $presencesByDate = $presences->groupBy(fn($p) => Carbon::parse($p->check_in)->toDateString());
+
+            $masuk = $sakit = $izin = $holiday = $lainnya = 0;
+
+            foreach ($presencesByDate as $date => $entries) {
+                // Ambil prioritas status jika ada multiple status di hari yang sama
+                // Misal prioritas: present > sick > permission > holiday > lainnya
+                if ($entries->contains('status', 'present')) {
+                    $masuk++;
+                } elseif ($entries->contains('status', 'sick')) {
+                    $sakit++;
+                } elseif ($entries->contains('status', 'permission')) {
+                    $izin++;
+                } elseif ($entries->contains('status', 'holiday')) {
+                    $holiday++;
+                } else {
+                    $lainnya++;
+                }
+            }
+
+            // Hitung alpa otomatis
+            $alpa = $hariEfektif - ($masuk + $sakit + $izin + $holiday + $lainnya);
+            if ($alpa < 0) $alpa = 0;
+
+
+            $tgl_sakit = $presences->where('status', 'sick')
+                ->pluck('check_in')
+                ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
+                ->implode(', ');
+
+            $tgl_izin = $presences->where('status', 'permission')
+                ->pluck('check_in')
+                ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
+                ->implode(', ');
+
+            $keterangan = [];
+            if ($sakit > 0) $keterangan[] = 'Sakit tanggal ' . $tgl_sakit;
+            if ($izin > 0)  $keterangan[] = 'Izin tanggal ' . $tgl_izin;
+            if ($alpa > 0)  $keterangan[] = 'Alpa ' . $alpa . ' hari'; // keterangan alpa
+
+            $keteranganStr = !empty($keterangan) ? implode(' | ', $keterangan) : '-';
+
+            $rekap[] = (object)[
+                'nama'        => $student->name,
+                'kelas'       => $student->class->name ?? '-',
+                'hari_efektif' => $hariEfektif,
+                'masuk'       => $masuk,
+                'sakit'       => $sakit,
+                'izin'        => $izin,
+                'alpa'        => $alpa,
+                'libur'       => $holiday,
+                'lainnya'     => $lainnya,
+                'keterangan'  => $keteranganStr,
+            ];
+        }
+
+
+        $data = [
+            'data'      => $rekap,
+            'yearResult' => $yearResult,
+            'batchName' => $batchName,
+            'className' => $classCode,
+        ];
+
+        $pdf = \Barryvdh\Snappy\Facades\SnappyPdf::loadView('presence.report', $data)
+            ->setOption('page-size', 'A4')
+            ->setOption('orientation', 'Portrait')
+            ->setOption('margin-top', 20)
+            ->setOption('margin-left', 15)
+            ->setOption('margin-right', 15)
+            ->setOption('margin-bottom', 20)
+            ->setOption('enable-local-file-access', true);
+
+        return $pdf->download('Rekap Kehadiran Prakerin ' . ($classCode ?? 'Semua Kelas') . '.pdf');
     }
-
-    // Query siswa sesuai filter batch, class, search
-    $studentsQuery = Student::with(['class', 'internshipBatch'])
-        ->whereHas('internshipBatch', fn($q) => $q->where('status_batch', 'active'));
-
-    if ($batchId) {
-        $studentsQuery->whereHas('internshipBatch', fn($q) => $q->where('id', $batchId));
-        $batch = InternshipBatch::find($batchId);
-        $batchName = $batch ? $batch->batch_name : 'Gelombang Tidak Ditemukan';
-    } else {
-        $batchName = 'Semua Gelombang';
-    }
-
-    if ($classCode) {
-        $studentsQuery->whereHas('class', fn($q) => $q->where('class_code', $classCode));
-    }
-
-    if ($search) {
-        $studentsQuery->where('name', 'like', '%' . $search . '%');
-    }
-
-    $students = $studentsQuery->orderBy('name', 'asc')->get();
-
-    // Hitung hari efektif
-    $hariEfektif = 77;
-    // if ($start && $end) {
-    //     $hariEfektif = Presence::whereBetween('check_in', [$start, $end])
-    //         ->selectRaw('DATE(check_in) as tgl')
-    //         ->groupBy('tgl')
-    //         ->pluck('tgl')
-    //         ->count();
-    // }
-
-
-    $rekap = [];
-    foreach ($students as $student) {
-    // Hitung kehadiran per status untuk batch aktif
-    $presencesQuery = Presence::where('student_id', $student->id)
-        ->whereHas('student.internshipBatch', function($q) {
-            $q->where('status_batch', 'active');
-        });
-
-    if ($start && $end) {
-        $presencesQuery->whereBetween('created_at', [$start, $end]);
-    }
-
-    $presences = $presencesQuery->get();
-
-// Group by tanggal (hanya tanggal, bukan waktu)
-$presencesByDate = $presences->groupBy(fn($p) => Carbon::parse($p->check_in)->toDateString());
-
-$masuk = $sakit = $izin = $holiday = $lainnya = 0;
-
-foreach ($presencesByDate as $date => $entries) {
-    // Ambil prioritas status jika ada multiple status di hari yang sama
-    // Misal prioritas: present > sick > permission > holiday > lainnya
-    if ($entries->contains('status', 'present')) {
-        $masuk++;
-    } elseif ($entries->contains('status', 'sick')) {
-        $sakit++;
-    } elseif ($entries->contains('status', 'permission')) {
-        $izin++;
-    } elseif ($entries->contains('status', 'holiday')) {
-        $holiday++;
-    } else {
-        $lainnya++;
-    }
-}
-
-// Hitung alpa otomatis
-$alpa = $hariEfektif - ($masuk + $sakit + $izin + $holiday + $lainnya);
-if ($alpa < 0) $alpa = 0;
-
-
-    $tgl_sakit = $presences->where('status', 'sick')
-                    ->pluck('check_in')
-                    ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-                    ->implode(', ');
-
-    $tgl_izin = $presences->where('status', 'permission')
-                    ->pluck('check_in')
-                    ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-                    ->implode(', ');
-
-    $keterangan = [];
-    if ($sakit > 0) $keterangan[] = 'Sakit tanggal '.$tgl_sakit;
-    if ($izin > 0)  $keterangan[] = 'Izin tanggal '.$tgl_izin;
-    if ($alpa > 0)  $keterangan[] = 'Alpa '.$alpa.' hari'; // keterangan alpa
-
-    $keteranganStr = !empty($keterangan) ? implode(' | ', $keterangan) : '-';
-
-    $rekap[] = (object)[
-        'nama'        => $student->name,
-        'kelas'       => $student->class->name ?? '-',
-        'hari_efektif'=> $hariEfektif,
-        'masuk'       => $masuk,
-        'sakit'       => $sakit,
-        'izin'        => $izin,
-        'alpa'        => $alpa,
-        'libur'       => $holiday,
-        'lainnya'     => $lainnya,
-        'keterangan'  => $keteranganStr,
-    ];
-}
-
-
-    $data = [
-        'data'      => $rekap,
-        'yearResult'=> $yearResult,
-        'batchName' => $batchName,
-        'className' => $classCode,
-    ];
-
-    $pdf = \Barryvdh\Snappy\Facades\SnappyPdf::loadView('presence.report', $data)
-        ->setOption('page-size','A4')
-        ->setOption('orientation','Portrait')
-        ->setOption('margin-top',20)
-        ->setOption('margin-left',15)
-        ->setOption('margin-right',15)
-        ->setOption('margin-bottom',20)
-        ->setOption('enable-local-file-access',true);
-
-    return $pdf->download('Rekap Kehadiran Prakerin ' . ($classCode ?? 'Semua Kelas') . '.pdf');
-}
-
-
-
 
 
     // public function checkIn(Request $request)
@@ -1018,51 +1015,132 @@ if ($alpa < 0) $alpa = 0;
 
     public function checkIn(Request $request)
     {
-        // Ambil latitude dan longitude dari request
-        $latitude = $request->input('check_in_latitude');
+        $latitude  = $request->input('check_in_latitude');
         $longitude = $request->input('check_in_longitude');
-        $check_in_location_link = "https://www.google.com/maps?q=";
+        $photo     = $request->file('proof_photo');
 
-        // Pastikan data diterima
         if ($latitude === null || $longitude === null) {
-            return response()->json(['error' => 'Data geolocation tidak ditemukan'], 400);
+            return response()->json([
+                'success' => false,
+                'error'   => 'Data geolocation tidak ditemukan'
+            ], 400);
         }
 
-        // Ambil waktu saat ini
+        $student = Student::with('internshipPlace', 'mentor')
+            ->where('id', session('ses_student_id'))
+            ->first();
+
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Data siswa tidak ditemukan'
+            ], 400);
+        }
+
+        $place = $student->internshipPlace;
+
+        if (!$place) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Data tempat prakerin (DUDI) tidak ditemukan'
+            ], 400);
+        }
+
+        // Ambil koordinat DUDI (sesuaikan nama kolom jika berbeda)
+        $dudiLat = $place->latitude ?? $place->lat ?? null;
+        $dudiLng = $place->longitude ?? $place->long ?? $place->lng ?? null;
+
+        $isOutsideRadius = false;
+        $distance = null;
+
+        if ($dudiLat !== null && $dudiLng !== null) {
+            // Hitung jarak
+            $distance = $this->calculateDistance(
+                (float) $latitude,
+                (float) $longitude,
+                (float) $dudiLat,
+                (float) $dudiLng
+            );
+
+            $radiusMeter = 200; // toleransi 200 meter
+
+            if ($distance > $radiusMeter) {
+                $isOutsideRadius = true;
+            }
+        } else {
+            // Jika koordinat DUDI kosong → anggap di luar radius (wajib foto)
+            $isOutsideRadius = true;
+        }
+
+        // ===== WAJIB FOTO JIKA DI LUAR RADIUS =====
+        if ($isOutsideRadius && !$photo) {
+            $message = $distance !== null
+                ? 'Lokasi Anda di luar area DUDI (jarak ±' . round($distance) . ' m). Silakan upload foto sebagai bukti.'
+                : 'Koordinat DUDI belum diatur / lokasi tidak cocok. Silakan upload foto sebagai bukti presensi.';
+
+            return response()->json([
+                'success'       => false,
+                'require_photo' => true,
+                'message'       => $message,
+                'distance'      => $distance !== null ? round($distance) : null,
+            ], 422);
+        }
+
+        // Simpan foto jika ada
+        $photoPath = null;
+        if ($photo) {
+            $photoPath = $photo->store('presence-photos', 'public');
+        }
+
         $currentTime = Carbon::now();
+        $check_in_location_link = "https://www.google.com/maps?q={$latitude},{$longitude}";
 
-        // Validasi jam presensi (7 pagi - 10 malam)
-        // if ($currentTime->hour < 7 || $currentTime->hour > 22) {
-        //     return response()->json(['error' => 'Presensi hanya dapat dilakukan antara jam 7 pagi hingga 10 malam'], 400);
-        // }
-
-        // Simpan data lat/long ke database
         $presence = Presence::create([
-            'check_in_latitude' => $latitude,
-            'check_in_longitude' => $longitude,
-            'check_in_location_link' => $check_in_location_link . $latitude . "," . $longitude,
-            'student_id' => session('ses_student_id'),  // Asumsi Anda menggunakan autentikasi
-            'check_in' => $currentTime,
+            'check_in_latitude'      => $latitude,
+            'check_in_longitude'     => $longitude,
+            'check_in_location_link' => $check_in_location_link,
+            'student_id'             => $student->id,
+            'check_in'               => $currentTime,
+            'proof_photo'            => $photoPath,
+            'status'                 => 'present', // pastikan ada default status
+            'note'                   => $isOutsideRadius
+                ? ($distance !== null
+                    ? 'Presensi di luar radius DUDI (±' . round($distance) . ' m) – dilengkapi foto bukti'
+                    : 'Presensi dengan foto bukti (koordinat DUDI tidak tersedia)')
+                : null,
         ]);
 
-        // Ambil data siswa beserta internshipPlace
-        $student = $presence->student()->with('internshipPlace', 'mentor')->first();
-
-        // Pastikan data siswa ditemukan
-        if (!$student) {
-            return response()->json(['error' => 'Data siswa tidak ditemukan'], 400);
-        }
-
-        // Ambil mentor yang mengajar siswa ini
+        // Kirim notifikasi Telegram
         $mentor = $student->mentor;
-
-        // Pastikan mentor ditemukan
-        if (!$mentor) {
-            return response()->json(['error' => 'Mentor tidak ditemukan untuk siswa ini'], 400);
+        if ($mentor) {
+            $this->sendTelegramNotification($mentor, $student, $presence);
         }
 
-        // Kirim notifikasi ke Telegram
-        $this->sendTelegramNotification($mentor, $student, $presence);
+        return response()->json([
+            'success' => true,
+            'message' => $isOutsideRadius
+                ? 'Presensi masuk berhasil (dengan foto bukti karena di luar radius).'
+                : 'Presensi masuk berhasil.',
+        ]);
+    }
+
+    /**
+     * Hitung jarak antara 2 koordinat (meter)
+     */
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371000; // meter
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
     }
 
     private function sendTelegramNotification($mentor, $student, $presence)

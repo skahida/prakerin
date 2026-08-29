@@ -611,456 +611,786 @@ class DashboardController extends Controller
     {
         $role = session('ses_role');
 
-        if ($role === 'super-admin') {
-            // Ambil data absensi hanya dari batch aktif
-            $historyPresences = Presence::query()
-                ->with('student.internshipBatch')
-                ->whereHas('student.internshipBatch', function ($q) {
-                    $q->where('status_batch', 'active');
-                });
-
-            // FILTER TANGGAL SPESIFIK (lebih utama)
-            if ($request->filled('start_date')) {
-                $start = Carbon::parse($request->start_date)->startOfDay();
-                $end = $request->filled('end_date')
-                    ? Carbon::parse($request->end_date)->endOfDay()
-                    : Carbon::parse($request->start_date)->endOfDay();
-
-                $historyPresences->whereBetween('created_at', [$start, $end]);
-            } elseif ($request->filled('start_month')) {
-                // FILTER BERDASARKAN BULAN
-                $start = Carbon::parse($request->start_month)->startOfMonth();
-                $end = $request->filled('end_month')
-                    ? Carbon::parse($request->end_month)->endOfMonth()
-                    : Carbon::parse($request->start_month)->endOfMonth();
-
-                $historyPresences->whereBetween('created_at', [$start, $end]);
-            }
-
-
-            // FILTER SISWA
-            if ($request->filled('student_name')) {
-                $historyPresences->whereHas('student', function ($q) use ($request) {
-                    $q->where('name', $request->student_name);
-                });
-            }
-
-            // FILTER BATCH
-            if ($request->filled('batch_name')) {
-                $batchName = $request->input('batch_name');
-                $historyPresences->whereHas('student.internshipBatch', function ($q) use ($batchName) {
-                    $q->where('id', $batchName);
-                });
-
-                $batch = InternshipBatch::find($batchName);
-                $batchName = $batch ? $batch->batch_name : 'Gelombang Tidak Ditemukan';
-            } else {
-                $batchName = 'Semua Gelombang';
-            }
-
-            // FILTER KELAS
-            if ($request->filled('class_code')) {
-                $classCode = $request->input('class_code');
-
-                $historyPresences->whereHas('student', function ($q) use ($classCode) {
-                    $q->where('class_code', $classCode);
-                });
-
-                $class = ClassModel::where('code', $classCode)->first();
-                $className = $class ? $class->name : 'Kelas Tidak Ditemukan';
-            } else {
-                $className = 'Semua Kelas';
-            }
-
-            logger('CLASS CODE:', [$request->class_code]);
-
-            // Ambil data presensi
-            $historyPresences = $historyPresences->get();
-
-            // Group by student
-            $students = $historyPresences->groupBy(function ($item) {
-                return $item->student->id;
-            });
-
-            Carbon::setLocale('id');
-
-            // Format bulan/tahun untuk identitas
-            $yearResult = '';
-            if ($request->filled('start_month')) {
-                $carbonStartDate = Carbon::createFromFormat('Y-m', $request->input('start_month'));
-
-                if ($request->filled('end_month')) {
-                    $carbonEndDate = Carbon::createFromFormat('Y-m', $request->input('end_month'));
-                    $yearResult = $carbonStartDate->translatedFormat('F') . ' - ' . $carbonEndDate->translatedFormat('F Y');
-                } else {
-                    $yearResult = $carbonStartDate->translatedFormat('F Y');
-                }
-            } else {
-                $yearResult = "Belum filter bulan";
-            }
-
-            $chartData = [];
-            $rekapTable = [];
-
-            // Presence table
-            $presenceTable = $historyPresences->map(function ($presence, $index) {
-                return [
-                    'id' => $presence->id,
-                    'no' => $index + 1,
-                    'siswa' => $presence->student->name ?? '-',
-                    'kelas' => $presence->student->class->name ?? '-',
-                    'dudi' => $presence->student->internshipPlace->name ?? '-',
-                    'gelombang' => $presence->student->internshipBatch->batch_name ?? '-',
-                    'tahun_pelajaran' => $presence->student->internshipBatch->academic_year ?? '-',
-                    'hari' => $presence->check_in ? Carbon::parse($presence->check_in)->locale('id')->isoFormat('dddd') : '-',
-                    'tanggal' => $presence->check_in ? Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y') : '-',
-                    'masuk' => $presence->check_in ? Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
-                    'pulang' => $presence->check_out ? Carbon::parse($presence->check_out)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
-                    'lokasi_masuk' => $presence->check_in_location_link ?? null,
-                    'lokasi_pulang' => $presence->check_out_location_link ?? null,
-                    'status' => $presence->status == 'present' ? 'Masuk'
-                        : ($presence->status == 'permission' ? 'Izin'
-                            : ($presence->status == 'sick' ? 'Sakit' : 'Alpa')),
-                    'note' => $presence->note ?? "-",
-                    'aksi_link' => route('historyPresence.edit', $presence->id),
-                ];
-            });
-
-            foreach ($students as $studentId => $presences) {
-                $student = $presences->first()->student;
-
-                // hitung per status
-                $masuk = $presences->where('status', 'present')->count();
-                $sakit = $presences->where('status', 'sick')->count();
-                $izin  = $presences->where('status', 'permission')->count(); // pastikan DB pakai "permission"
-                $alpa  = $presences->where('status', 'absent')->count();
-                $lainnya = $presences->whereNotIn('status', ['present', 'absent', 'sick', 'permission'])->count();
-
-                // data untuk chart (hadir vs alpa saja)
-                $chartData[] = [
-                    'label'    => $student->name,
-                    'data'     => [
-                        $masuk,    // hadir
-                        $alpa,     // alpa
-                        $izin,     // izin
-                        $sakit,    // sakit
-                    ],
-                    'batch_id' => $student->internshipBatch ? $student->internshipBatch->id : null,
-                ];
-
-
-                // ambil tanggal sakit
-                $tanggalSakit = $presences
-                    ->where('status', 'sick')
-                    ->pluck('created_at')
-                    ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-                    ->implode(', ');
-
-                // ambil tanggal izin
-                $tanggalIzin = $presences
-                    ->where('status', 'permission')
-                    ->pluck('created_at')
-                    ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-                    ->implode(', ');
-
-                // gabungkan keterangan
-                $keterangan = collect()
-                    ->when($tanggalSakit, fn($c) => $c->push('Sakit tanggal ' . $tanggalSakit))
-                    ->when($tanggalIzin, fn($c) => $c->push('Izin tanggal ' . $tanggalIzin))
-                    ->implode('; ');
-
-
-                // hitung hari efektif (exclude Minggu)
-                $hariEfektif = 0;
-                if ($request->filled('start_month')) {
-                    $startDate = Carbon::parse($request->start_month);
-                    $endDate = $request->filled('end_month') ? Carbon::parse($request->end_month) : $startDate;
-
-                    for ($date = $startDate->copy()->startOfMonth(); $date <= $endDate->copy()->endOfMonth(); $date->addDay()) {
-                        if (!$date->isSunday()) {
-                            $hariEfektif++;
-                        }
-                    }
-                }
-
-                // rakap table
-                $rekapTable[] = [
-                    'nama'        => $student->name,
-                    'kelas'       => $student->class->name ?? '-',
-                    'dudi'        => $student->internshipPlace->name ?? '-',
-                    'pembimbing'  => $student->mentor->name ?? '-',
-                    'hari_efektif' => $hariEfektif,
-                    'masuk'       => $masuk,
-                    'sakit'       => $sakit,
-                    'izin'        => $izin,
-                    'alpa'        => $alpa,
-                    'lainnya'     => $lainnya,
-                    'keterangan'  => $keterangan ?: '-',
-                ];
-            }
-
-
-            $chartData = collect($chartData)
-                ->sortByDesc('present')
-                ->map(fn($item) => [
-                    'label' => $item['label'],
-                    'data' => $item['data'],
-                    'batch_id' => $item['batch_id'],
-                ])
-                ->values()
-                ->all();
-
-            $rekapTable = collect($rekapTable)->sortByDesc('masuk')->values()->all();
-
-            // Dropdown filter hanya batch aktif
-            $studentsForFilter = Student::whereHas('internshipBatch', function ($q) {
-                $q->where('status_batch', 'active');
-            })->get();
-
-            $batchesForFilter = InternshipBatch::where('status_batch', 'active')->get();
-            $classesForFilter = ClassModel::orderBy('name')->get();
-
+        // Hanya role yang diperbolehkan
+        if (!in_array($role, ['super-admin', 'mentor'])) {
             return response()->json([
-                'presenceTable' => $presenceTable,
-                'yearResult' => $yearResult,
-                'batchNameIdentity' => $batchName,
-                'attendanceData' => $chartData,
-                'rekapTable' => $rekapTable,
-                'students' => $studentsForFilter,
-                'batches' => $batchesForFilter,
-                'classes' => $classesForFilter,
-            ]);
-        } elseif ($role === 'mentor') {
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        // =========================================================
+        // MENTOR ID
+        // =========================================================
+        $mentorId = null;
+
+        if ($role === 'mentor') {
             $mentorId = Auth::user()->mentor->id ?? null;
 
-
-            // Ambil data absensi hanya dari siswa dengan mentor_id sesuai login + batch aktif
-            $historyPresences = Presence::query()
-                ->with('student.internshipBatch')
-                ->whereHas('student', function ($q) use ($mentorId) {
-                    $q->where('mentor_id', $mentorId)
-                        ->whereHas('internshipBatch', function ($q2) {
-                            $q2->where('status_batch', 'active');
-                        });
-                });
-
-            // FILTER TANGGAL SPESIFIK (lebih utama)
-            if ($request->filled('start_date')) {
-                $start = Carbon::parse($request->start_date)->startOfDay();
-                $end = $request->filled('end_date')
-                    ? Carbon::parse($request->end_date)->endOfDay()
-                    : Carbon::parse($request->start_date)->endOfDay();
-
-                $historyPresences->whereBetween('created_at', [$start, $end]);
-            } elseif ($request->filled('start_month')) {
-                // FILTER BERDASARKAN BULAN
-                $start = Carbon::parse($request->start_month)->startOfMonth();
-                $end = $request->filled('end_month')
-                    ? Carbon::parse($request->end_month)->endOfMonth()
-                    : Carbon::parse($request->start_month)->endOfMonth();
-
-                $historyPresences->whereBetween('created_at', [$start, $end]);
+            if (!$mentorId) {
+                return response()->json([
+                    'message' => 'Data mentor tidak ditemukan'
+                ], 403);
             }
+        }
 
-            // === FILTER SISWA ===
-            if ($request->filled('student_name')) {
-                $historyPresences->whereHas('student', function ($q) use ($request) {
-                    $q->where('name', $request->student_name);
-                });
-            }
+        // =========================================================
+        // QUERY PRESENSI
+        // =========================================================
+        $historyPresences = Presence::query()
+            ->with([
+                'student',
+                'student.class',
+                'student.internshipPlace',
+                'student.internshipBatch',
+                'student.mentor',
+            ]);
 
-            // === FILTER BATCH ===
-            if ($request->filled('batch_name')) {
-                $batchName = $request->input('batch_name');
-                $historyPresences->whereHas('student.internshipBatch', function ($q) use ($batchName) {
-                    $q->where('id', $batchName);
-                });
+        // =========================================================
+        // FILTER BERDASARKAN ROLE
+        // =========================================================
+        if ($role === 'super-admin') {
 
-                $batch = InternshipBatch::find($batchName);
-                $batchName = $batch ? $batch->batch_name : 'Gelombang Tidak Ditemukan';
-            } else {
-                $batchName = 'Semua Gelombang';
-            }
+            // Super admin hanya melihat batch aktif
+            $historyPresences->whereHas('student.internshipBatch', function ($q) {
+                $q->where('status_batch', 'active');
+            });
+        } elseif ($role === 'mentor') {
 
-            // === FILTER KELAS ===
-            if ($request->filled('class_code')) {
-                $classCode = $request->input('class_code');
+            // Mentor hanya melihat siswa bimbingannya + batch aktif
+            $historyPresences->whereHas('student', function ($q) use ($mentorId) {
+                $q->where('mentor_id', $mentorId)
+                    ->whereHas('internshipBatch', function ($q2) {
+                        $q2->where('status_batch', 'active');
+                    });
+            });
+        }
 
-                $historyPresences->whereHas('student', function ($q) use ($classCode) {
-                    $q->where('class_code', $classCode);
-                });
+        // =========================================================
+        // FILTER TANGGAL
+        // start_date lebih utama dibanding start_month
+        // =========================================================
+        if ($request->filled('start_date')) {
 
-                $class = ClassModel::where('code', $classCode)->first();
-                $className = $class ? $class->name : 'Kelas Tidak Ditemukan';
-            } else {
-                $className = 'Semua Kelas';
-            }
+            $start = Carbon::parse($request->start_date)
+                ->startOfDay();
 
+            $end = $request->filled('end_date')
+                ? Carbon::parse($request->end_date)->endOfDay()
+                : Carbon::parse($request->start_date)->endOfDay();
 
-            // Ambil data presensi
-            $historyPresences = $historyPresences->get();
+            $historyPresences->whereBetween('created_at', [
+                $start,
+                $end
+            ]);
+        } elseif ($request->filled('start_month')) {
 
-            // === Logic sama seperti super-admin (groupBy student, presenceTable, chartData, rekapTable, dst) ===
-            $students = $historyPresences->groupBy(function ($item) {
+            $start = Carbon::parse($request->start_month)
+                ->startOfMonth();
+
+            $end = $request->filled('end_month')
+                ? Carbon::parse($request->end_month)->endOfMonth()
+                : Carbon::parse($request->start_month)->endOfMonth();
+
+            $historyPresences->whereBetween('created_at', [
+                $start,
+                $end
+            ]);
+        }
+
+        // =========================================================
+        // FILTER SISWA
+        // =========================================================
+        if ($request->filled('student_name')) {
+
+            $studentName = $request->input('student_name');
+
+            $historyPresences->whereHas('student', function ($q) use ($studentName) {
+                $q->where('name', $studentName);
+            });
+        }
+
+        // =========================================================
+        // FILTER BATCH
+        // =========================================================
+        if ($request->filled('batch_name')) {
+
+            $batchId = $request->input('batch_name');
+
+            $historyPresences->whereHas(
+                'student.internshipBatch',
+                function ($q) use ($batchId) {
+                    $q->where('id', $batchId);
+                }
+            );
+
+            $batch = InternshipBatch::find($batchId);
+
+            $batchName = $batch
+                ? $batch->batch_name
+                : 'Gelombang Tidak Ditemukan';
+        } else {
+
+            $batchName = 'Semua Gelombang';
+        }
+
+        // =========================================================
+        // FILTER KELAS
+        // =========================================================
+        if ($request->filled('class_code')) {
+
+            $classCode = $request->input('class_code');
+
+            $historyPresences->whereHas('student', function ($q) use ($classCode) {
+                $q->where('class_code', $classCode);
+            });
+
+            $class = ClassModel::where('code', $classCode)->first();
+
+            $className = $class
+                ? $class->name
+                : 'Kelas Tidak Ditemukan';
+        } else {
+
+            $className = 'Semua Kelas';
+        }
+
+        // =========================================================
+        // AMBIL DATA PRESENSI
+        // =========================================================
+        $historyPresences = $historyPresences
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // =========================================================
+        // GROUP BERDASARKAN SISWA
+        // =========================================================
+        $students = $historyPresences
+            ->filter(function ($item) {
+                return $item->student;
+            })
+            ->groupBy(function ($item) {
                 return $item->student->id;
             });
 
-            Carbon::setLocale('id');
+        Carbon::setLocale('id');
 
-            $yearResult = '';
-            if ($request->filled('start_month')) {
-                $carbonStartDate = Carbon::createFromFormat('Y-m', $request->input('start_month'));
+        // =========================================================
+        // IDENTITAS BULAN / TAHUN
+        // =========================================================
+        if ($request->filled('start_month')) {
 
-                if ($request->filled('end_month')) {
-                    $carbonEndDate = Carbon::createFromFormat('Y-m', $request->input('end_month'));
-                    $yearResult = $carbonStartDate->translatedFormat('F') . ' - ' . $carbonEndDate->translatedFormat('F Y');
-                } else {
-                    $yearResult = $carbonStartDate->translatedFormat('F Y');
-                }
+            $carbonStartDate = Carbon::createFromFormat(
+                'Y-m',
+                $request->input('start_month')
+            );
+
+            if ($request->filled('end_month')) {
+
+                $carbonEndDate = Carbon::createFromFormat(
+                    'Y-m',
+                    $request->input('end_month')
+                );
+
+                $yearResult =
+                    $carbonStartDate->translatedFormat('F Y')
+                    . ' - '
+                    . $carbonEndDate->translatedFormat('F Y');
             } else {
-                $yearResult = "Belum filter bulan";
+
+                $yearResult =
+                    $carbonStartDate->translatedFormat('F Y');
             }
+        } elseif ($request->filled('start_date')) {
 
-            $chartData = [];
-            $rekapTable = [];
+            $carbonStartDate = Carbon::parse(
+                $request->start_date
+            );
 
-            $presenceTable = $historyPresences->map(function ($presence, $index) {
+            if ($request->filled('end_date')) {
+
+                $carbonEndDate = Carbon::parse(
+                    $request->end_date
+                );
+
+                $yearResult =
+                    $carbonStartDate->translatedFormat('d F Y')
+                    . ' - '
+                    . $carbonEndDate->translatedFormat('d F Y');
+            } else {
+
+                $yearResult =
+                    $carbonStartDate->translatedFormat('d F Y');
+            }
+        } else {
+
+            $yearResult = 'Belum filter tanggal/bulan';
+        }
+
+        // =========================================================
+        // PRESENCE TABLE
+        // =========================================================
+        $presenceTable = $historyPresences
+            ->values()
+            ->map(function ($presence, $index) {
+
                 return [
+
                     'id' => $presence->id,
+
                     'no' => $index + 1,
-                    'siswa' => $presence->student->name ?? '-',
-                    'kelas' => $presence->student->class->name ?? '-',
-                    'dudi' => $presence->student->internshipPlace->name ?? '-',
-                    'gelombang' => $presence->student->internshipBatch->batch_name ?? '-',
-                    'tahun_pelajaran' => $presence->student->internshipBatch->academic_year ?? '-',
-                    'hari' => $presence->check_in ? Carbon::parse($presence->check_in)->locale('id')->isoFormat('dddd') : '-',
-                    'tanggal' => $presence->check_in ? Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('d-m-Y') : '-',
-                    'masuk' => $presence->check_in ? Carbon::parse($presence->check_in)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
-                    'pulang' => $presence->check_out ? Carbon::parse($presence->check_out)->timezone('Asia/Jakarta')->format('H:i:s') : '-',
-                    'lokasi_masuk' => $presence->check_in_location_link ?? null,
-                    'lokasi_pulang' => $presence->check_out_location_link ?? null,
-                    'status' => $presence->status == 'present' ? 'Masuk'
-                        : ($presence->status == 'permission' ? 'Izin'
-                            : ($presence->status == 'sick' ? 'Sakit' : 'Alpa')),
-                    'note' => $presence->note ?? "-",
-                    'aksi_link' => route('historyPresence.edit', $presence->id),
+
+                    'siswa' =>
+                    $presence->student->name ?? '-',
+
+                    'kelas' =>
+                    $presence->student->class->name ?? '-',
+
+                    'dudi' =>
+                    $presence->student->internshipPlace->name ?? '-',
+
+                    'gelombang' =>
+                    $presence->student->internshipBatch->batch_name ?? '-',
+
+                    'tahun_pelajaran' =>
+                    $presence->student->internshipBatch->academic_year ?? '-',
+
+                    'hari' =>
+                    $presence->check_in
+                        ? Carbon::parse($presence->check_in)
+                        ->locale('id')
+                        ->isoFormat('dddd')
+                        : Carbon::parse($presence->created_at)
+                        ->locale('id')
+                        ->isoFormat('dddd'),
+
+                    'tanggal' =>
+                    $presence->check_in
+                        ? Carbon::parse($presence->check_in)
+                        ->timezone('Asia/Jakarta')
+                        ->format('d-m-Y')
+                        : Carbon::parse($presence->created_at)
+                        ->timezone('Asia/Jakarta')
+                        ->format('d-m-Y'),
+
+                    'masuk' =>
+                    $presence->check_in
+                        ? Carbon::parse($presence->check_in)
+                        ->timezone('Asia/Jakarta')
+                        ->format('H:i:s')
+                        : '-',
+
+                    'pulang' =>
+                    $presence->check_out
+                        ? Carbon::parse($presence->check_out)
+                        ->timezone('Asia/Jakarta')
+                        ->format('H:i:s')
+                        : '-',
+
+                    'lokasi_masuk' =>
+                    $presence->check_in_location_link ?? null,
+
+                    'lokasi_pulang' =>
+                    $presence->check_out_location_link ?? null,
+
+                    // =============================================
+                    // STATUS TERMASUK HOLIDAY
+                    // =============================================
+                    'status' => match ($presence->status) {
+
+                        'present' =>
+                        'Masuk',
+
+                        'permission' =>
+                        'Izin',
+
+                        'sick' =>
+                        'Sakit',
+
+                        'absent' =>
+                        'Alpa',
+
+                        'holiday' =>
+                        'Libur',
+
+                        default =>
+                        'Lainnya',
+                    },
+
+                    'status_raw' => $presence->status,
+
+                    'note' =>
+                    $presence->note ?? '-',
+
+                    'aksi_link' =>
+                    route(
+                        'historyPresence.edit',
+                        $presence->id
+                    ),
                 ];
             });
 
-            foreach ($students as $studentId => $presences) {
-                $student = $presences->first()->student;
+        // =========================================================
+        // CHART & REKAP
+        // =========================================================
+        $chartData = [];
+        $rekapTable = [];
 
-                // hitung per status
-                $masuk = $presences->where('status', 'present')->count();
-                $sakit = $presences->where('status', 'sick')->count();
-                $izin  = $presences->where('status', 'permission')->count(); // pastikan DB pakai "permission"
-                $alpa  = $presences->where('status', 'absent')->count();
-                $lainnya = $presences->whereNotIn('status', ['present', 'absent', 'sick', 'permission'])->count();
+        foreach ($students as $studentId => $presences) {
 
-                // data untuk chart (hadir vs alpa saja)
-                $chartData[] = [
-                    'label'    => $student->name,
-                    'data'     => [
-                        $masuk,    // hadir
-                        $alpa,     // alpa
-                        $izin,     // izin
-                        $sakit,    // sakit
-                    ],
-                    'batch_id' => $student->internshipBatch ? $student->internshipBatch->id : null,
-                ];
+            $student = $presences
+                ->first()
+                ->student;
 
-                // ambil tanggal sakit
-                $tanggalSakit = $presences
-                    ->where('status', 'sick')
-                    ->pluck('created_at')
-                    ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-                    ->implode(', ');
+            if (!$student) {
+                continue;
+            }
 
-                // ambil tanggal izin
-                $tanggalIzin = $presences
-                    ->where('status', 'permission')
-                    ->pluck('created_at')
-                    ->map(fn($tgl) => Carbon::parse($tgl)->translatedFormat('d'))
-                    ->implode(', ');
+            // =====================================================
+            // HITUNG STATUS
+            // =====================================================
+            $masuk = $presences
+                ->where('status', 'present')
+                ->count();
 
-                // gabungkan keterangan
-                $keterangan = collect()
-                    ->when($tanggalSakit, fn($c) => $c->push('Sakit tanggal ' . $tanggalSakit))
-                    ->when($tanggalIzin, fn($c) => $c->push('Izin tanggal ' . $tanggalIzin))
-                    ->implode('; ');
+            $sakit = $presences
+                ->where('status', 'sick')
+                ->count();
 
+            $izin = $presences
+                ->where('status', 'permission')
+                ->count();
 
-                // hitung hari efektif (exclude Minggu)
-                $hariEfektif = 0;
-                if ($request->filled('start_month')) {
-                    $startDate = Carbon::parse($request->start_month);
-                    $endDate = $request->filled('end_month') ? Carbon::parse($request->end_month) : $startDate;
+            $alpa = $presences
+                ->where('status', 'absent')
+                ->count();
 
-                    for ($date = $startDate->copy()->startOfMonth(); $date <= $endDate->copy()->endOfMonth(); $date->addDay()) {
-                        if (!$date->isSunday()) {
-                            $hariEfektif++;
-                        }
+            $holiday = $presences
+                ->where('status', 'holiday')
+                ->count();
+
+            $lainnya = $presences
+                ->whereNotIn('status', [
+                    'present',
+                    'absent',
+                    'sick',
+                    'permission',
+                    'holiday',
+                ])
+                ->count();
+
+            // =====================================================
+            // CHART
+            //
+            // Urutan:
+            // 0 = Masuk
+            // 1 = Alpa
+            // 2 = Izin
+            // 3 = Sakit
+            // 4 = Libur
+            // =====================================================
+            $chartData[] = [
+
+                'label' =>
+                $student->name,
+
+                'data' => [
+                    $masuk,
+                    $alpa,
+                    $izin,
+                    $sakit,
+                    $holiday,
+                ],
+
+                // dibuat juga supaya gampang sorting
+                'present' =>
+                $masuk,
+
+                'absent' =>
+                $alpa,
+
+                'permission' =>
+                $izin,
+
+                'sick' =>
+                $sakit,
+
+                'holiday' =>
+                $holiday,
+
+                'batch_id' =>
+                $student->internshipBatch
+                    ? $student->internshipBatch->id
+                    : null,
+            ];
+
+            // =====================================================
+            // TANGGAL SAKIT
+            // =====================================================
+            $tanggalSakit = $presences
+                ->where('status', 'sick')
+                ->map(function ($presence) {
+
+                    $tanggal = $presence->check_in
+                        ?? $presence->created_at;
+
+                    return Carbon::parse($tanggal)
+                        ->locale('id')
+                        ->translatedFormat('d');
+                })
+                ->implode(', ');
+
+            // =====================================================
+            // TANGGAL IZIN
+            // =====================================================
+            $tanggalIzin = $presences
+                ->where('status', 'permission')
+                ->map(function ($presence) {
+
+                    $tanggal = $presence->check_in
+                        ?? $presence->created_at;
+
+                    return Carbon::parse($tanggal)
+                        ->locale('id')
+                        ->translatedFormat('d');
+                })
+                ->implode(', ');
+
+            // =====================================================
+            // TANGGAL LIBUR
+            // =====================================================
+            $tanggalLibur = $presences
+                ->where('status', 'holiday')
+                ->map(function ($presence) {
+
+                    $tanggal = $presence->check_in
+                        ?? $presence->created_at;
+
+                    return Carbon::parse($tanggal)
+                        ->locale('id')
+                        ->translatedFormat('d');
+                })
+                ->implode(', ');
+
+            // =====================================================
+            // KETERANGAN
+            // =====================================================
+            $keterangan = collect();
+
+            if ($tanggalSakit) {
+                $keterangan->push(
+                    'Sakit tanggal ' . $tanggalSakit
+                );
+            }
+
+            if ($tanggalIzin) {
+                $keterangan->push(
+                    'Izin tanggal ' . $tanggalIzin
+                );
+            }
+
+            if ($tanggalLibur) {
+                $keterangan->push(
+                    'Libur tanggal ' . $tanggalLibur
+                );
+            }
+
+            $keterangan =
+                $keterangan->implode('; ');
+
+            // =====================================================
+            // HITUNG HARI EFEKTIF
+            //
+            // Minggu tidak dihitung.
+            // Holiday juga tidak dihitung sebagai hari efektif.
+            // =====================================================
+            $hariEfektif = 0;
+
+            $periodeStart = null;
+            $periodeEnd = null;
+
+            // Filter tanggal
+            if ($request->filled('start_date')) {
+
+                $periodeStart = Carbon::parse(
+                    $request->start_date
+                )->startOfDay();
+
+                $periodeEnd = $request->filled('end_date')
+                    ? Carbon::parse($request->end_date)->endOfDay()
+                    : Carbon::parse($request->start_date)->endOfDay();
+            }
+            // Filter bulan
+            elseif ($request->filled('start_month')) {
+
+                $periodeStart = Carbon::parse(
+                    $request->start_month
+                )->startOfMonth();
+
+                $periodeEnd = $request->filled('end_month')
+                    ? Carbon::parse($request->end_month)->endOfMonth()
+                    : Carbon::parse($request->start_month)->endOfMonth();
+            }
+
+            // Hitung Senin-Sabtu
+            if ($periodeStart && $periodeEnd) {
+
+                for (
+                    $date = $periodeStart->copy()->startOfDay();
+                    $date->lte($periodeEnd->copy()->startOfDay());
+                    $date->addDay()
+                ) {
+
+                    if (!$date->isSunday()) {
+                        $hariEfektif++;
                     }
                 }
 
-                // rakap table
-                $rekapTable[] = [
-                    'nama'        => $student->name,
-                    'kelas'       => $student->class->name ?? '-',
-                    'dudi'        => $student->internshipPlace->name ?? '-',
-                    'pembimbing'  => $student->mentor->name ?? '-',
-                    'hari_efektif' => $hariEfektif,
-                    'masuk'       => $masuk,
-                    'sakit'       => $sakit,
-                    'izin'        => $izin,
-                    'alpa'        => $alpa,
-                    'lainnya'     => $lainnya,
-                    'keterangan'  => $keterangan ?: '-',
-                ];
+                // ================================================
+                // Kurangi hari libur
+                //
+                // Gunakan UNIQUE DATE agar jika ada data holiday
+                // ganda pada tanggal yang sama tidak terhitung 2x.
+                // ================================================
+                $jumlahHariLibur = $presences
+                    ->where('status', 'holiday')
+                    ->map(function ($presence) {
+
+                        $tanggal = $presence->check_in
+                            ?? $presence->created_at;
+
+                        return Carbon::parse($tanggal)
+                            ->timezone('Asia/Jakarta')
+                            ->format('Y-m-d');
+                    })
+                    ->unique()
+                    ->count();
+
+                $hariEfektif =
+                    max(
+                        0,
+                        $hariEfektif - $jumlahHariLibur
+                    );
             }
 
+            // =====================================================
+            // REKAP TABLE
+            // =====================================================
+            $rekapTable[] = [
 
-            $chartData = collect($chartData)
-                ->sortByDesc('present')
-                ->map(fn($item) => [
-                    'label' => $item['label'],
-                    'data' => $item['data'],
-                    'batch_id' => $item['batch_id'],
-                ])
-                ->values()
-                ->all();
+                'nama' =>
+                $student->name,
 
-            $rekapTable = collect($rekapTable)->sortByDesc('masuk')->values()->all();
+                'kelas' =>
+                $student->class->name ?? '-',
 
-            // Dropdown filter untuk siswa & batch mentor ini
-            $studentsForFilter = Student::where('mentor_id', $mentorId)
-                ->whereHas('internshipBatch', function ($q) {
-                    $q->where('status_batch', 'active');
-                })->get();
+                'dudi' =>
+                $student->internshipPlace->name ?? '-',
 
-            $batchesForFilter = InternshipBatch::whereHas('students', function ($q) use ($mentorId) {
-                $q->where('mentor_id', $mentorId);
-            })->where('status_batch', 'active')->get();
+                'pembimbing' =>
+                $student->mentor->name ?? '-',
 
-            $classesForFilter = ClassModel::whereHas('students', function ($q) use ($mentorId) {
-                $q->where('mentor_id', $mentorId)
-                ->whereHas('internshipBatch', function ($q2) {
-                    $q2->where('status_batch', 'active');
-                });
-            })->orderBy('name')->get();
+                'hari_efektif' =>
+                $hariEfektif,
 
+                'masuk' =>
+                $masuk,
 
-            return response()->json([
-                'presenceTable' => $presenceTable,
-                'yearResult' => $yearResult,
-                'batchNameIdentity' => $batchName,
-                'attendanceData' => $chartData,
-                'rekapTable' => $rekapTable,
-                'students' => $studentsForFilter,
-                'batches' => $batchesForFilter,
-                'classes' => $classesForFilter, // ✅ TAMBAHAN
-            ]);
+                'sakit' =>
+                $sakit,
+
+                'izin' =>
+                $izin,
+
+                'alpa' =>
+                $alpa,
+
+                // STATUS LIBUR
+                'holiday' =>
+                $holiday,
+
+                'libur' =>
+                $holiday,
+
+                'lainnya' =>
+                $lainnya,
+
+                'keterangan' =>
+                $keterangan ?: '-',
+            ];
         }
+
+        // =========================================================
+        // SORTING CHART
+        // Siswa dengan kehadiran terbanyak di atas
+        // =========================================================
+        $chartData = collect($chartData)
+            ->sortByDesc('present')
+            ->map(function ($item) {
+
+                return [
+
+                    'label' =>
+                    $item['label'],
+
+                    'data' =>
+                    $item['data'],
+
+                    'batch_id' =>
+                    $item['batch_id'],
+
+                    'present' =>
+                    $item['present'],
+
+                    'absent' =>
+                    $item['absent'],
+
+                    'permission' =>
+                    $item['permission'],
+
+                    'sick' =>
+                    $item['sick'],
+
+                    'holiday' =>
+                    $item['holiday'],
+                ];
+            })
+            ->values()
+            ->all();
+
+        // =========================================================
+        // SORTING REKAP
+        // =========================================================
+        $rekapTable = collect($rekapTable)
+            ->sortByDesc('masuk')
+            ->values()
+            ->all();
+
+        // =========================================================
+        // DROPDOWN FILTER
+        // =========================================================
+
+        if ($role === 'super-admin') {
+
+            // Siswa batch aktif
+            $studentsForFilter = Student::whereHas(
+                'internshipBatch',
+                function ($q) {
+                    $q->where(
+                        'status_batch',
+                        'active'
+                    );
+                }
+            )
+                ->orderBy('name')
+                ->get();
+
+            // Batch aktif
+            $batchesForFilter = InternshipBatch::where(
+                'status_batch',
+                'active'
+            )
+                ->orderBy('batch_name')
+                ->get();
+
+            // Semua kelas
+            $classesForFilter = ClassModel::orderBy(
+                'name'
+            )->get();
+        } else {
+
+            // =====================================================
+            // FILTER DROPDOWN MENTOR
+            // =====================================================
+
+            $studentsForFilter = Student::where(
+                'mentor_id',
+                $mentorId
+            )
+                ->whereHas(
+                    'internshipBatch',
+                    function ($q) {
+                        $q->where(
+                            'status_batch',
+                            'active'
+                        );
+                    }
+                )
+                ->orderBy('name')
+                ->get();
+
+            $batchesForFilter = InternshipBatch::whereHas(
+                'students',
+                function ($q) use ($mentorId) {
+
+                    $q->where(
+                        'mentor_id',
+                        $mentorId
+                    );
+                }
+            )
+                ->where(
+                    'status_batch',
+                    'active'
+                )
+                ->orderBy('batch_name')
+                ->get();
+
+            $classesForFilter = ClassModel::whereHas(
+                'students',
+                function ($q) use ($mentorId) {
+
+                    $q->where(
+                        'mentor_id',
+                        $mentorId
+                    )
+                        ->whereHas(
+                            'internshipBatch',
+                            function ($q2) {
+
+                                $q2->where(
+                                    'status_batch',
+                                    'active'
+                                );
+                            }
+                        );
+                }
+            )
+                ->orderBy('name')
+                ->get();
+        }
+
+        // =========================================================
+        // RESPONSE JSON
+        // =========================================================
+        return response()->json([
+
+            'presenceTable' =>
+            $presenceTable,
+
+            'yearResult' =>
+            $yearResult,
+
+            'batchNameIdentity' =>
+            $batchName,
+
+            'classNameIdentity' =>
+            $className,
+
+            'attendanceData' =>
+            $chartData,
+
+            'rekapTable' =>
+            $rekapTable,
+
+            'students' =>
+            $studentsForFilter,
+
+            'batches' =>
+            $batchesForFilter,
+
+            'classes' =>
+            $classesForFilter,
+        ]);
     }
 
     // app/Http/Controllers/DashboardController.php

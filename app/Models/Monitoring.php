@@ -22,8 +22,9 @@ class Monitoring extends Model
         return $this->belongsTo(InternshipPlace::class, 'place_code', 'code');
     }
 
+    // app/Models/Monitoring.php
     public function mentor()
     {
-        return $this->belongsTo(User::class, 'mentor_id');
+        return $this->belongsTo(\App\Models\Mentor::class, 'mentor_id', 'id');
     }
 }

@@ -430,15 +430,15 @@ class PresenceController extends Controller
         $isSaturday = now()->isSaturday();
 
         // Jika tanggal 29-30 Okt 2025 atau hari Sabtu
-        if (in_array($today, ['2025-10-29', '2025-10-30', '2025-11-05', '2025-11-06']) || $isSaturday) {
-            $lat = -6.7641133;
-            $lng = 110.8042769;
-            $radius = 300;
-        } else {
-            $lat = $place->latitude;
-            $lng = $place->longitude;
-            $radius = 300;
-        }
+        // if (in_array($today, ['2025-10-29', '2025-10-30', '2025-11-05', '2025-11-06']) || $isSaturday) {
+        //     $lat = -6.7641133;
+        //     $lng = 110.8042769;
+        //     $radius = 300;
+        // } else {
+        $lat = $place->latitude;
+        $lng = $place->longitude;
+        $radius = 300;
+        // }
 
         return response()->json([
             'lat' => $lat,

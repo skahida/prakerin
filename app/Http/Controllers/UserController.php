@@ -50,7 +50,7 @@ class UserController extends Controller
     {
         // Lakukan logika reset password di sini
         try {
-            $user->password = bcrypt('prakerintracer'); // Misalnya reset ke password default
+            $user->password = bcrypt('password'); // Misalnya reset ke password default
             $user->save();
 
             return response()->json(['success' => true]);

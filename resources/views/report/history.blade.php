@@ -1,173 +1,611 @@
 @extends('layouts._app')
 
+@section('title', 'Laporan Mingguan — Tera Prakerin')
+
 @section('content')
-<div class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title mb-3">Cari Data Laporan</h4>
-                        <form method="GET">
-                            <label>Siswa:</label>
-                            <div class="form-group">
-                                <!-- Select2 Dropdown for Searching Students -->
-                                <select name="search" class="form-control form-control-lg selectpicker"
-                                    data-live-search="true" placeholder="Search by Nama Siswa">
-                                    <option value="">Select Nama Siswa</option>
-                                    <!-- Dynamically populate options with student names -->
-                                    @foreach ($students as $student)
-                                    <option value="{{ $student->name }}"
-                                        {{ request()->input('search') == $student->name ? 'selected' : '' }}>
-                                        {{ $student->name . ' | ' . $student->class_code }}
-                                    </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <label>Gelombang:</label>
-                            <div class="form-group">
-                                <!-- Select2 Dropdown for Searching Students -->
-                                <select name="batch_search" class="form-control form-control-lg selectpicker"
-                                    data-live-search="true" placeholder="Search by Gelombang">
-                                    <option value="">Select Gelombang</option>
-                                    <!-- Dynamically populate options with student names -->
-                                    @foreach ($batches as $batch)
-                                    <option value="{{ $batch->id }}"
-                                        {{ request()->input('batch_search') == $batch->id ? 'selected' : '' }}>
-                                        {{ $batch->batch_name . ' | ' . $batch->academic_year }}
-                                    </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="d-flex flex-column flex-md-row gap-2 mb-3">
-                                <!-- d-flex and flex-wrap to handle buttons layout -->
-                                <div class="input-group-append mr-2 mb-2 w-100 w-md-auto">
-                                    <!-- Ensure button takes full width on mobile -->
-                                    <button class="btn btn-md btn-info btn-fill w-100" type="submit">
-                                        <i class="nc-icon nc-zoom-split"></i> Search
-                                    </button>
-                                </div>
-                                <div class="input-group-append mr-2 mb-2 w-100 w-md-auto">
-                                    <!-- Ensure button takes full width on mobile -->
-                                    <a href="{{ route('report') }}" class="btn btn-md btn-success btn-fill w-100">
-                                        <i class="nc-icon nc-refresh-02"></i> Reload
-                                    </a>
-                                </div>
-                                @if (session('ses_role') == 'admin' || session('ses_role') == 'super-admin')
-                                <div class="d-flex flex-column flex-md-row gap-2">
-                                    <!-- Tombol Cetak Rekap -->
-                                    <div class="input-group-append mr-2 mb-2 w-100 w-md-auto">
-                                        <a href="{{ route('rekap.grade') }}?search={{ request('search') }}&batch_search={{ request('batch_search') }}"
-                                            class="btn btn-md btn-primary btn-fill w-100">
-                                            <i class="fas fa-file-pdf"></i> Cetak Rekap
-                                        </a>
-                                    </div>
+    @php
+        $role = session('ses_role') ?? auth()->user()->role;
+        $isAdmin = in_array($role, ['admin', 'super-admin']);
+        $isMentor = $role === 'mentor';
+    @endphp
 
-                                    <!-- Tombol Export Excel -->
-                                    <div class="input-group-append mr-2 mb-2 w-100 w-md-auto">
-                                        <a href="{{ route('export.rekap') }}?search={{ request('search') }}&batch_search={{ request('batch_search') }}"
-                                            class="btn btn-md btn-success btn-fill w-100">
-                                            <i class="fas fa-file-excel"></i> Export Excel
-                                        </a>
-                                    </div>
-                                </div>
-                                @elseif (session('ses_role') == 'mentor')
-                                <div class="input-group-append mr-2 mb-2 w-100 w-md-auto">
-                                    <!-- Ensure button takes full width on mobile -->
-                                    <a href="{{ route('rekap.grade') }}?search={{ request('search') }}&batch_search={{ request('batch_search') }}"
-                                        class="btn btn-md btn-primary btn-fill w-100">
-                                        <i class="fas fa-print"></i> Cetak Rekap
-                                    </a>
-                                </div>
-                                @endif
-                            </div>
-                        </form>
-                    </div>
+    <div class="max-w-7xl mx-auto space-y-10">
+
+        {{-- ===================== HEADER ===================== --}}
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+                <h2 class="text-4xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                    <span class="bg-teal-600 text-white p-3 rounded-2xl shadow-xl shadow-teal-200">
+                        <span class="material-icons-round block">assignment</span>
+                    </span>
+
+                    Laporan Mingguan
+                </h2>
+
+                <p class="text-slate-500 font-medium mt-2 uppercase text-xs tracking-[0.2em]">
+                    Penilaian dan Rekap Laporan Prakerin
+                </p>
+            </div>
+        </div>
+
+        {{-- ===================== ALERT ===================== --}}
+        @if (session('success'))
+            <div
+                class="p-4 rounded-2xl bg-teal-50 border border-teal-100
+                    text-teal-700 text-sm flex items-start gap-3">
+
+                <span class="material-icons-round text-teal-500">
+                    check_circle
+                </span>
+
+                <div>
+                    <p class="font-bold">Berhasil</p>
+                    <p class="mt-0.5">{{ session('success') }}</p>
                 </div>
+            </div>
+        @endif
 
-                <div class="card strpied-tabled-with-hover">
-                    <div class="card-header">
-                        <h4 class="card-title">Laporan Mingguan</h4>
-                        <p class="card-category">Upload laporan untuk setiap minggu Praktek Kerja Industri (Senin -
-                            Sabtu)</p>
-                    </div>
-                    <div class="card-body table-full-width table-responsive">
-                        <table class="table table-hover table-striped">
-                            <thead>
-                                <th>No.</th>
-                                <th>Aksi</th>
-                                <th>Nama</th>
-                                <th>Dudi</th>
-                                <th>Progress Upload Laporan</th>
-                                <th>Total Nilai</th>
-                                @if (session('ses_role') === 'admin' || session('ses_role') === 'super-admin')
-                                <th>Guru Pembimbing</th>
-                                @endif
-                            </thead>
-                            <tbody>
-                                @foreach ($distinctReportsPaginated as $report)
-                                <tr>
-                                    <td>
-                                        <!-- Menyesuaikan nomor urut berdasarkan pencarian dan pagination -->
-                                        {{ ($distinctReportsPaginated->currentPage() - 1) * $distinctReportsPaginated->perPage() + $loop->iteration }}
-                                    </td>
-                                    <td>
-                                        <!-- Cek apakah grades sudah ada untuk siswa -->
-                                        @if ($report->grades->isEmpty())
-                                        <!-- Jika belum ada nilai, tampilkan tombol 'Nilai Laporan' -->
-                                        <a class="btn btn-primary btn-fill"
-                                            href="{{ route('grade', ['studentId' => $report->student_id]) }}">
-                                            <i class="fas fa-pen"></i> Nilai Laporan
-                                        </a>
-                                        @else
-                                        <!-- Jika sudah ada nilai, tampilkan tombol 'Edit Laporan' -->
-                                        <a class="btn btn-warning btn-fill"
-                                            href="{{ route('grade', ['studentId' => $report->student_id]) }}">
-                                            <i class="fas fa-pen"></i> Edit Nilai Laporan
-                                        </a>
-                                        @endif
+        @if ($errors->any())
+            <div class="p-4 rounded-2xl bg-rose-50 border border-rose-100
+                    text-rose-700 text-sm">
 
-                                    </td>
-                                    <td>{{ $report->student->name }}</td>
-                                    <td>{{ $report->dudi_name }}</td>
-                                    <td>
-                                        <!-- Progress Bar -->
-                                        <div class="progress">
-                                            <div class="progress-bar {{ $report->progress_percentage == 100 ? 'bg-success' : 'bg-primary' }}"
-                                                role="progressbar"
-                                                style="width:  {{ round($report->progress_percentage) }}%"
-                                                aria-valuenow=" {{ round($report->progress_percentage) }}%"
-                                                aria-valuemin="0" aria-valuemax="100">
-                                                {{ round($report->progress_percentage) }}%
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @if ($report->grades->isEmpty())
-                                        <span class="badge badge-danger">Belum Diberikan</span>
-                                        @else
-                                        <!-- Menampilkan rata-rata grade untuk laporan -->
-                                        <span
-                                            class="badge badge-success">{{ $report->average_grade ?? 'N/A' }}</span>
-                                        @endif
-                                    </td>
-                                    @if (session('ses_role') === 'admin' || session('ses_role') === 'super-admin')
-                                    <td>{{ $report->mentor_name }}</td>
-                                    @endif
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                        <!-- Pagination links with Bootstrap 4 styling -->
-                        <div class="pagination justify-content-center">
-                            <!-- Link pagination dengan pencarian di URL -->
-                            {{ $distinctReportsPaginated->links('pagination::bootstrap-4') }}
-                            {{-- {{ $students->appends(request()->query())->links('pagination::bootstrap-4') }} --}}
-                        </div>
+                <div class="flex items-start gap-3">
+                    <span class="material-icons-round text-rose-500">
+                        error
+                    </span>
+
+                    <div>
+                        <p class="font-bold mb-1">Terjadi Kesalahan</p>
+
+                        <ul class="list-disc list-inside space-y-0.5">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
                     </div>
                 </div>
             </div>
+        @endif
+
+        {{-- ===================== FILTER ===================== --}}
+        <div
+            class="bg-white border border-slate-100 rounded-[2.5rem]
+                shadow-2xl shadow-slate-200/50 overflow-hidden">
+
+            <div class="px-8 py-6 border-b border-slate-50
+                    flex items-center justify-between gap-4">
+
+                <div>
+                    <h3 class="text-lg font-black text-slate-800 tracking-tight">
+                        Cari Data Laporan
+                    </h3>
+
+                    <p class="text-xs text-slate-400 font-medium mt-1 uppercase tracking-wider">
+                        Filter berdasarkan siswa dan gelombang prakerin
+                    </p>
+                </div>
+
+                <div
+                    class="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600
+                        flex items-center justify-center border border-blue-100">
+
+                    <span class="material-icons-round">manage_search</span>
+                </div>
+            </div>
+
+            <div class="p-8">
+                <form method="GET">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                        {{-- Siswa --}}
+                        <div class="space-y-1.5">
+                            <label for="search"
+                                class="text-[10px] font-black text-slate-400
+                                    uppercase tracking-widest">
+
+                                Siswa
+                            </label>
+
+                            <select name="search" id="search" class="select2-dropdown w-full">
+
+                                <option value="">Semua siswa</option>
+
+                                @foreach ($students as $student)
+                                    <option value="{{ $student->name }}"
+                                        {{ request('search') == $student->name ? 'selected' : '' }}>
+
+                                        {{ $student->name }} | {{ $student->class_code }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Gelombang --}}
+                        <div class="space-y-1.5">
+                            <label for="batch_search"
+                                class="text-[10px] font-black text-slate-400
+                                    uppercase tracking-widest">
+
+                                Gelombang
+                            </label>
+
+                            <select name="batch_search" id="batch_search" class="select2-dropdown w-full">
+
+                                <option value="">Semua gelombang</option>
+
+                                @foreach ($batches as $batch)
+                                    <option value="{{ $batch->id }}"
+                                        {{ request('batch_search') == $batch->id ? 'selected' : '' }}>
+
+                                        {{ $batch->batch_name }} | {{ $batch->academic_year }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Tombol --}}
+                    <div class="mt-6 flex flex-col sm:flex-row flex-wrap gap-3">
+
+                        {{-- Cari --}}
+                        <button type="submit"
+                            class="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-700
+                                text-white text-xs font-black uppercase tracking-widest
+                                transition-all flex items-center justify-center gap-2
+                                shadow-lg shadow-teal-200 active:scale-[0.98]">
+
+                            <span class="material-icons-round text-lg">
+                                search
+                            </span>
+
+                            Cari
+                        </button>
+
+                        {{-- Reset --}}
+                        <a href="{{ route('report') }}"
+                            class="px-7 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200
+                                text-slate-600 text-xs font-black uppercase tracking-widest
+                                transition-all flex items-center justify-center gap-2">
+
+                            <span class="material-icons-round text-lg">
+                                refresh
+                            </span>
+
+                            Reset
+                        </a>
+
+                        {{-- Cetak Rekap --}}
+                        @if ($isAdmin || $isMentor)
+                            <a href="{{ route('rekap.grade', [
+                                'search' => request('search'),
+                                'batch_search' => request('batch_search'),
+                            ]) }}"
+                                target="_blank"
+                                class="px-7 py-3 rounded-2xl bg-slate-800 hover:bg-slate-900
+                                    text-white text-xs font-black uppercase tracking-widest
+                                    transition-all flex items-center justify-center gap-2
+                                    shadow-lg shadow-slate-200 active:scale-[0.98]">
+
+                                <span class="material-icons-round text-lg">
+                                    picture_as_pdf
+                                </span>
+
+                                Cetak Rekap
+                            </a>
+                        @endif
+
+                        {{-- Export Excel khusus Admin --}}
+                        @if ($isAdmin)
+                            <a href="{{ route('export.rekap', [
+                                'search' => request('search'),
+                                'batch_search' => request('batch_search'),
+                            ]) }}"
+                                class="px-7 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700
+                                    text-white text-xs font-black uppercase tracking-widest
+                                    transition-all flex items-center justify-center gap-2
+                                    shadow-lg shadow-emerald-200 active:scale-[0.98]">
+
+                                <span class="material-icons-round text-lg">
+                                    table_view
+                                </span>
+
+                                Export Excel
+                            </a>
+                        @endif
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- ===================== TABEL LAPORAN ===================== --}}
+        <div
+            class="bg-white border border-slate-100 rounded-[2.5rem]
+                shadow-2xl shadow-slate-200/50 overflow-hidden">
+
+            <div
+                class="px-8 py-6 border-b border-slate-50
+                    flex flex-col sm:flex-row sm:items-center
+                    justify-between gap-4">
+
+                <div>
+                    <h3 class="text-lg font-black text-slate-800 tracking-tight">
+                        Laporan Mingguan
+                    </h3>
+
+                    <p class="text-xs text-slate-400 font-medium mt-1 uppercase tracking-wider">
+                        Upload laporan setiap minggu Prakerin, Senin sampai Sabtu
+                    </p>
+                </div>
+
+                <div
+                    class="w-11 h-11 shrink-0 rounded-2xl bg-purple-50 text-purple-600
+                        flex items-center justify-center border border-purple-100">
+
+                    <span class="material-icons-round">summarize</span>
+                </div>
+            </div>
+
+            @if ($distinctReportsPaginated->isEmpty())
+
+                {{-- Empty State --}}
+                <div class="text-center py-24 px-6">
+                    <div
+                        class="w-24 h-24 bg-slate-50 text-slate-200 rounded-[2.5rem]
+                            flex items-center justify-center mx-auto mb-6">
+
+                        <span class="material-icons-round text-6xl">
+                            assignment_late
+                        </span>
+                    </div>
+
+                    <h3 class="text-2xl font-black text-slate-800 tracking-tight">
+                        Data Tidak Ditemukan
+                    </h3>
+
+                    <p class="text-slate-400 font-medium max-w-md mx-auto mt-2">
+                        Belum ada data laporan mingguan berdasarkan filter yang dipilih.
+                    </p>
+                </div>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-separate border-spacing-0">
+                        <thead>
+                            <tr class="bg-slate-50/70">
+                                <th class="table-heading w-20">
+                                    No
+                                </th>
+
+                                <th class="table-heading">
+                                    Siswa
+                                </th>
+
+                                <th class="table-heading">
+                                    DUDI
+                                </th>
+
+                                <th class="table-heading min-w-[260px]">
+                                    Progress Upload
+                                </th>
+
+                                <th class="table-heading">
+                                    Total Nilai
+                                </th>
+
+                                @if ($isAdmin)
+                                    <th class="table-heading">
+                                        Guru Pembimbing
+                                    </th>
+                                @endif
+
+                                <th class="table-heading text-right">
+                                    Aksi
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <tbody class="divide-y divide-slate-50">
+                            @foreach ($distinctReportsPaginated as $report)
+                                @php
+                                    $progress = max(0, min(100, round($report->progress_percentage ?? 0)));
+
+                                    $hasGrade = $report->grades->isNotEmpty();
+
+                                    $studentName = $report->student?->name ?? '-';
+
+                                    $initial = mb_strtoupper(mb_substr($studentName, 0, 1));
+
+                                    $averageGrade = $report->average_grade ?? null;
+                                @endphp
+
+                                <tr class="group hover:bg-slate-50/50 transition-colors">
+
+                                    {{-- Nomor --}}
+                                    <td class="table-cell align-middle">
+                                        <span
+                                            class="text-sm font-black text-slate-300
+                                                group-hover:text-teal-500 transition-colors">
+
+                                            {{ sprintf(
+                                                '%02d',
+                                                ($distinctReportsPaginated->currentPage() - 1) * $distinctReportsPaginated->perPage() + $loop->iteration,
+                                            ) }}
+                                        </span>
+                                    </td>
+
+                                    {{-- Siswa --}}
+                                    <td class="table-cell align-middle min-w-[240px]">
+                                        <div class="flex items-center gap-3">
+                                            <div
+                                                class="w-11 h-11 shrink-0 rounded-xl bg-teal-50
+                                                    text-teal-600 flex items-center justify-center
+                                                    font-black text-sm border border-teal-100
+                                                    group-hover:bg-teal-600 group-hover:text-white
+                                                    transition-all">
+
+                                                {{ $initial }}
+                                            </div>
+
+                                            <div>
+                                                <p
+                                                    class="font-black text-slate-800 text-sm
+                                                        group-hover:text-teal-600 transition-colors">
+
+                                                    {{ $studentName }}
+                                                </p>
+
+                                                <p class="text-xs text-slate-400 mt-0.5">
+                                                    Siswa Prakerin
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    {{-- DUDI --}}
+                                    <td class="table-cell align-middle min-w-[220px]">
+                                        <div class="flex items-start gap-2">
+                                            <span class="material-icons-round text-slate-300 text-lg mt-0.5">
+
+                                                business
+                                            </span>
+
+                                            <p class="text-sm font-bold text-slate-700">
+                                                {{ $report->dudi_name ?? '-' }}
+                                            </p>
+                                        </div>
+                                    </td>
+
+                                    {{-- Progress --}}
+                                    <td class="table-cell align-middle min-w-[280px]">
+                                        <div class="space-y-2">
+                                            <div class="flex items-center justify-between gap-4">
+                                                <span class="text-xs font-bold text-slate-500">
+                                                    Kelengkapan laporan
+                                                </span>
+
+                                                <span
+                                                    class="text-xs font-black
+                                                        {{ $progress === 100 ? 'text-teal-600' : 'text-blue-600' }}">
+
+                                                    {{ $progress }}%
+                                                </span>
+                                            </div>
+
+                                            <div
+                                                class="w-full h-3 bg-slate-100 rounded-full
+                                                    overflow-hidden">
+
+                                                <div class="h-full rounded-full transition-all duration-500
+                                                        {{ $progress === 100 ? 'bg-teal-500' : 'bg-blue-500' }}"
+                                                    style="width: {{ $progress }}%">
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center gap-1.5">
+                                                <span
+                                                    class="material-icons-round text-sm
+                                                        {{ $progress === 100 ? 'text-teal-500' : 'text-slate-400' }}">
+
+                                                    {{ $progress === 100 ? 'check_circle' : 'pending' }}
+                                                </span>
+
+                                                <span class="text-[10px] font-bold text-slate-400 uppercase">
+                                                    {{ $progress === 100 ? 'Laporan lengkap' : 'Laporan belum lengkap' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    {{-- Nilai --}}
+                                    <td class="table-cell align-middle whitespace-nowrap">
+                                        @if (!$hasGrade)
+                                            <span
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5
+                                                    rounded-xl text-xs font-bold border
+                                                    bg-rose-50 text-rose-700 border-rose-100">
+
+                                                <span class="material-icons-round text-sm">
+                                                    pending_actions
+                                                </span>
+
+                                                Belum Diberikan
+                                            </span>
+                                        @else
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-12 h-12 rounded-2xl bg-teal-50
+                                                        text-teal-700 border border-teal-100
+                                                        flex items-center justify-center
+                                                        font-black text-base">
+
+                                                    {{ $averageGrade ?? 'N/A' }}
+                                                </div>
+
+                                                <div>
+                                                    <p class="text-xs font-black text-slate-700">
+                                                        Nilai Rata-rata
+                                                    </p>
+
+                                                    <p class="text-[10px] text-teal-600 font-bold mt-0.5">
+                                                        Sudah dinilai
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </td>
+
+                                    {{-- Guru Pembimbing --}}
+                                    @if ($isAdmin)
+                                        <td class="table-cell align-middle min-w-[210px]">
+                                            <div class="flex items-center gap-2">
+                                                <span
+                                                    class="w-9 h-9 rounded-xl bg-purple-50
+                                                        text-purple-600 flex items-center justify-center
+                                                        border border-purple-100">
+
+                                                    <span class="material-icons-round text-base">
+                                                        school
+                                                    </span>
+                                                </span>
+
+                                                <span class="text-sm font-bold text-slate-700">
+                                                    {{ $report->mentor_name ?? '-' }}
+                                                </span>
+                                            </div>
+                                        </td>
+                                    @endif
+
+                                    {{-- Aksi --}}
+                                    <td class="table-cell align-middle">
+                                        <div class="flex justify-end">
+                                            <a href="{{ route('grade', [
+                                                'studentId' => $report->student_id,
+                                            ]) }}"
+                                                class="inline-flex items-center justify-center gap-2
+                                                    px-4 py-2.5 rounded-xl text-xs font-black
+                                                    uppercase tracking-wider transition-all
+                                                    active:scale-[0.98]
+                                                    {{ $hasGrade
+                                                        ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-100'
+                                                        : 'bg-teal-600 text-white hover:bg-teal-700 shadow-lg shadow-teal-200' }}">
+
+                                                <span class="material-icons-round text-base">
+                                                    {{ $hasGrade ? 'edit_note' : 'rate_review' }}
+                                                </span>
+
+                                                {{ $hasGrade ? 'Edit Nilai' : 'Nilai Laporan' }}
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Pagination --}}
+                @if ($distinctReportsPaginated->hasPages())
+                    <div class="px-8 py-6 border-t border-slate-50">
+                        {{ $distinctReportsPaginated->withQueryString()->links() }}
+                    </div>
+                @endif
+            @endif
         </div>
     </div>
-</div>
 @endsection
+
+@push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+
+    <style>
+        .table-heading {
+            padding: 1.25rem 1.5rem;
+            font-size: 10px;
+            font-weight: 900;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+        }
+
+        .table-cell {
+            padding: 1.5rem;
+        }
+
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            height: 46px !important;
+            border-radius: 16px !important;
+            border: 1px solid #e2e8f0 !important;
+            background-color: #f8fafc !important;
+            padding: 8px 12px !important;
+            display: flex;
+            align-items: center;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #334155 !important;
+            font-size: 0.875rem !important;
+            line-height: 1.5 !important;
+            padding-left: 0 !important;
+            padding-right: 25px !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 44px !important;
+            right: 10px !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__placeholder {
+            color: #94a3b8 !important;
+        }
+
+        .select2-dropdown {
+            border-radius: 16px !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1) !important;
+            overflow: hidden;
+        }
+
+        .select2-search--dropdown .select2-search__field {
+            border-radius: 12px !important;
+            border: 1px solid #e2e8f0 !important;
+            padding: 8px 12px !important;
+            outline: none !important;
+        }
+
+        .select2-results__option {
+            padding: 10px 14px !important;
+            font-size: 0.875rem !important;
+        }
+
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background-color: #0d9488 !important;
+        }
+    </style>
+@endpush
+
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('.select2-dropdown').select2({
+                placeholder: 'Cari / Pilih...',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return 'Tidak ditemukan';
+                    },
+                    searching: function() {
+                        return 'Mencari...';
+                    }
+                }
+            });
+        });
+    </script>
+@endpush

@@ -56,7 +56,7 @@ Route::middleware(['web'])->group(function () {
     // Grouped routes under auth middleware
     Route::middleware(['auth'])->group(function () {
 
-        Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
+        Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
         // Route Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -144,9 +144,14 @@ Route::middleware(['web'])->group(function () {
         Route::get('/calendar', [DashboardController::class, 'calendar'])->name('calendar');
         Route::get('/v1report', [InternshipReportController::class, 'index'])->name('v1report');
         Route::get('/report', [InternshipReportController::class, 'v1index'])->name('report');
-        Route::post('/report', [ReportController::class, 'store']);
-        Route::get('/get-report-data', [ReportController::class, 'getReportData']);
-        Route::post('/report/edit', [ReportController::class, 'edit']);
+        Route::post('/report/store', [ReportController::class, 'store'])
+            ->name('report.store');
+
+        Route::get('/report/get-data', [ReportController::class, 'getReportData'])
+            ->name('report.getData');
+
+        Route::post('/report/edit', [ReportController::class, 'edit'])
+            ->name('report.edit');
         Route::get('/get-report-details/{studentId}', [ReportController::class, 'getReportDetails']);
         Route::get('/grade/{studentId}', [GradeController::class, 'index'])->name('grade');
         Route::post('/save-or-update-grade', [GradeController::class, 'saveOrUpdateGrade'])->name('saveUpdateGrade');
@@ -199,5 +204,14 @@ Route::middleware(['web'])->group(function () {
         Route::get('/map-monitoring', [MapMonitoringController::class, 'index'])->name('map-monitoring.index');
 
         Route::get('/map-monitoring/data', [MapMonitoringController::class, 'getPresencesAjax'])->name('map.monitoring.data');
+
+        Route::get('/jurnal', [App\Http\Controllers\JurnalController::class, 'index'])->name('jurnal.index');
+        Route::get('/jurnal/create', [App\Http\Controllers\JurnalController::class, 'create'])->name('jurnal.create');
+        Route::post('/jurnal', [App\Http\Controllers\JurnalController::class, 'store'])->name('jurnal.store');
+        Route::get('/jurnal/{jurnal}', [App\Http\Controllers\JurnalController::class, 'show'])->name('jurnal.show');
+        Route::get('/jurnal/{jurnal}/edit', [App\Http\Controllers\JurnalController::class, 'edit'])->name('jurnal.edit');
+        Route::put('/jurnal/{jurnal}', [App\Http\Controllers\JurnalController::class, 'update'])->name('jurnal.update');
+        Route::delete('/jurnal/{jurnal}', [App\Http\Controllers\JurnalController::class, 'destroy'])->name('jurnal.destroy');
+        Route::post('/jurnal/{jurnal}/sign', [App\Http\Controllers\JurnalController::class, 'sign'])->name('jurnal.sign');
     });
 });

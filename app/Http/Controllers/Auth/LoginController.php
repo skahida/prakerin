@@ -25,13 +25,13 @@ class LoginController extends Controller
             'password' => [
                 'required',
                 'string',
-                'min:8',
+                'min:5',
             ],
         ], [
             'username.required' => 'Username harus diisi.',
             'username.exists' => 'Username tidak terdaftar.',
             'password.required' => 'Kata sandi harus diisi.',
-            'password.min' => 'Kata sandi minimal 8 karakter.',
+            'password.min' => 'Kata sandi minimal 5 karakter.',
         ]);
 
         // Cek apakah email ada dan akun aktif

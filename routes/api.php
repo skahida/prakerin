@@ -6,6 +6,7 @@ use App\Http\Controllers\TelegramController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PresenceController;
 use App\Http\Controllers\Api\MentorController;
+use App\Http\Controllers\Api\MonitoringApiController;
 
 // Route::get('/user', function (Request $request) {
 //     return $request->user();
@@ -19,6 +20,18 @@ Route::get('/acheck-status', [PresenceController::class, 'checkStatus']);
 // Route::get('/presence/atoday', [PresenceController::class, 'presenceToday']);
 
 Route::get('/live-prakerin', [App\Http\Controllers\Api\MonitoringApiController::class, 'getStats']);
+Route::get('/riwayat/presensi', [PresenceController::class, 'historyAll']);
+
+Route::get(
+    '/video',
+    [MonitoringApiController::class, 'getVideos']
+);
+
+Route::get(
+    '/video/{report}/thumbnail',
+    [MonitoringApiController::class, 'thumbnail']
+)
+    ->whereNumber('report');
 
 Route::middleware('auth.token')->get('/user-info', function (Request $request) {
     $user = $request->user();

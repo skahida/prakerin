@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Models\InternshipPlace;
 use App\Models\Monitoring;
+use App\Models\InternshipBatchDetail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -15,28 +16,54 @@ class MentorController extends Controller
 {
     public function index()
     {
-        $mentor = Auth::user();
-        if (!$mentor) {
-            return response()->json(['success' => false, 'message' => 'User mentor tidak ditemukan']);
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak ditemukan'
+            ], 401);
         }
 
-        // Mengambil tempat magang berdasarkan relasi ke siswa, 
-        // dan memfilter siswa tersebut berdasarkan batch yang aktif
-        $places = InternshipPlace::whereHas('students', function ($query) use ($mentor) {
-            $query->where('mentor_id', $mentor->id)
-                ->whereHas('internshipBatch', function ($q) {
-                    $q->where('status_batch', 'active');
-                });
-        })->get(['code', 'name']);
+        // Relasi users.id ke mentors.user_id
+        $mentor = $user->mentor;
+
+        if (!$mentor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data mentor tidak ditemukan',
+                'user_id' => $user->id
+            ], 404);
+        }
+
+        $details = InternshipBatchDetail::with([
+            'place:code,name'
+        ])
+            ->where('mentor_id', $mentor->id)
+            ->whereHas('batch', function ($query) {
+                $query->where('status_batch', 'active');
+            })
+            ->get();
+
+        $places = $details
+            ->pluck('place')
+            ->filter()
+            ->unique('code')
+            ->values();
 
         if ($places->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak ada tempat magang dengan batch aktif untuk mentor ini'
-            ]);
+                'message' => 'Tidak ada tempat magang dengan batch aktif',
+                'user_id' => $user->id,
+                'mentor_id' => $mentor->id
+            ], 404);
         }
 
-        return response()->json(['success' => true, 'places' => $places]);
+        return response()->json([
+            'success' => true,
+            'places' => $places
+        ]);
     }
 
     public function list(Request $request)
